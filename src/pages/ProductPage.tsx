@@ -50,8 +50,14 @@ const ProductPage = () => {
   const [searchParams] = useSearchParams();
   const isAnalyzing = searchParams.get("analyzing") === "true";
   const [isRetrying, setIsRetrying] = useState(false);
+  const [systemLogs, setSystemLogs] = useState<string[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const addLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setSystemLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+  };
   
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", barcode],
@@ -80,13 +86,23 @@ const ProductPage = () => {
   const handleRetryAnalysis = async () => {
     if (!barcode) return;
     
+    setSystemLogs([]); // Clear previous logs
+    addLog("Step 1: Button Clicked");
+    
     setIsRetrying(true);
     try {
-      const { error } = await supabase.functions.invoke("analyze-product", {
+      addLog("Step 2: Invoking Analyze Function...");
+      
+      const { data, error } = await supabase.functions.invoke("analyze-product", {
         body: { barcode },
       });
       
-      if (error) throw error;
+      if (error) {
+        addLog(`Step 3: Function Result: ERROR - ${error.message}`);
+        throw error;
+      }
+      
+      addLog(`Step 3: Function Result: SUCCESS - Score: ${data?.analysis?.health_score ?? 'N/A'}`);
       
       toast({
         title: "Analysis Started",
@@ -94,11 +110,14 @@ const ProductPage = () => {
       });
       
       // Refetch product data after a short delay
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["product", barcode] });
+      addLog("Step 4: Reloading Database...");
+      setTimeout(async () => {
+        await queryClient.invalidateQueries({ queryKey: ["product", barcode] });
+        addLog("Step 5: Database Reloaded - Complete!");
       }, 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Retry analysis error:", error);
+      addLog(`ERROR: ${error?.message || 'Unknown error occurred'}`);
       toast({
         title: "Analysis Failed",
         description: "Could not start analysis. Please try again.",
@@ -294,6 +313,22 @@ const ProductPage = () => {
             </button>
           </div>
         )}
+
+        {/* System Logs Debug Panel */}
+        <div className="mt-6 bg-muted/50 rounded-xl p-4 border border-border animate-fade-up">
+          <h4 className="font-semibold text-foreground mb-2 text-sm">🔧 System Logs</h4>
+          <div className="bg-background rounded-lg p-3 max-h-40 overflow-y-auto font-mono text-xs space-y-1">
+            {systemLogs.length === 0 ? (
+              <p className="text-muted-foreground">Click "Refresh" to see debug logs...</p>
+            ) : (
+              systemLogs.map((log, i) => (
+                <p key={i} className={log.includes('ERROR') ? 'text-destructive' : log.includes('SUCCESS') ? 'text-green-600' : 'text-foreground'}>
+                  {log}
+                </p>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
