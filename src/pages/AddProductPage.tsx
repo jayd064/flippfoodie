@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Camera, Loader2 } from "lucide-react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+interface OpenFoodFactsProduct {
+  product_name?: string;
+  brands?: string;
+  image_front_url?: string;
+}
 
 const AddProductPage = () => {
   const [searchParams] = useSearchParams();
@@ -20,15 +26,68 @@ const AddProductPage = () => {
   const [frontPreview, setFrontPreview] = useState<string | null>(null);
   const [backPreview, setBackPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetchingProduct, setIsFetchingProduct] = useState(false);
+  const [apiFrontImageUrl, setApiFrontImageUrl] = useState<string | null>(null);
+
+  // Auto-fetch from OpenFoodFacts on page load
+  useEffect(() => {
+    const fetchFromOpenFoodFacts = async () => {
+      if (!barcode) return;
+      
+      setIsFetchingProduct(true);
+      try {
+        const response = await fetch(
+          `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
+        );
+        const data = await response.json();
+        
+        if (data.status === 1 && data.product) {
+          const product: OpenFoodFactsProduct = data.product;
+          
+          // Auto-fill name
+          if (product.product_name) {
+            setName(product.product_name);
+          }
+          
+          // Auto-fill brand
+          if (product.brands) {
+            setBrand(product.brands);
+          }
+          
+          // Set front image from API
+          if (product.image_front_url) {
+            setApiFrontImageUrl(product.image_front_url);
+            setFrontPreview(product.image_front_url);
+          }
+          
+          toast({
+            title: "Product Found!",
+            description: "Auto-filled from OpenFoodFacts database.",
+          });
+        }
+      } catch (error) {
+        console.error("OpenFoodFacts fetch error:", error);
+        // Silently fail - user can still enter manually
+      } finally {
+        setIsFetchingProduct(false);
+      }
+    };
+
+    fetchFromOpenFoodFacts();
+  }, [barcode, toast]);
 
   const handleImageChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     setImage: (file: File | null) => void,
-    setPreview: (url: string | null) => void
+    setPreview: (url: string | null) => void,
+    clearApiImage?: boolean
   ) => {
     const file = e.target.files?.[0];
     if (file) {
       setImage(file);
+      if (clearApiImage) {
+        setApiFrontImageUrl(null);
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -48,7 +107,7 @@ const AddProductPage = () => {
 
     if (error) {
       console.error("Upload error:", error);
-      return null;
+      throw new Error(`Failed to upload ${type} image: ${error.message}`);
     }
 
     const { data } = supabase.storage
@@ -70,30 +129,42 @@ const AddProductPage = () => {
       return;
     }
 
+    if (!backImage) {
+      toast({
+        title: "Error",
+        description: "Please take a photo of the ingredients label",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      let frontImageUrl: string | null = null;
+      let frontImageUrl: string | null = apiFrontImageUrl;
       let backImageUrl: string | null = null;
 
+      // Upload front image if user took a new one
       if (frontImage) {
         frontImageUrl = await uploadImage(frontImage, "front");
       }
-      if (backImage) {
-        backImageUrl = await uploadImage(backImage, "back");
-      }
+      
+      // Always upload the back/ingredients image
+      backImageUrl = await uploadImage(backImage, "back");
 
       const { error } = await supabase.from("products").insert({
         barcode,
         name: name.trim(),
         brand: brand.trim() || null,
         ingredients_text: null,
-        health_score: null, // AI will analyze
+        health_score: null,
         front_image_url: frontImageUrl,
         back_image_url: backImageUrl,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message);
+      }
 
       toast({
         title: "Product Added!",
@@ -102,12 +173,9 @@ const AddProductPage = () => {
 
       navigate(`/product/${barcode}?analyzing=true`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       console.error("Error adding product:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add product. Please try again.",
-        variant: "destructive",
-      });
+      alert(`Failed to add product: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -131,12 +199,20 @@ const AddProductPage = () => {
         </div>
       </div>
 
+      {/* Loading indicator for API fetch */}
+      {isFetchingProduct && (
+        <div className="mx-5 mt-4 p-3 rounded-xl bg-primary/10 border border-primary/20 flex items-center gap-3">
+          <Loader2 className="w-5 h-5 text-primary animate-spin" />
+          <span className="text-sm text-primary">Looking up product info...</span>
+        </div>
+      )}
+
       {/* Form */}
       <form onSubmit={handleSubmit} className="px-5 py-6 space-y-6">
         {/* Main Action - Take Photo of Ingredients */}
         <div className="space-y-3">
           <Label className="text-foreground text-base font-semibold">
-            📸 Take Photo of Ingredients
+            📸 Take Photo of Ingredients *
           </Label>
           <label className="block cursor-pointer">
             {backPreview ? (
@@ -173,7 +249,9 @@ const AddProductPage = () => {
 
         {/* Optional Front Image */}
         <div className="space-y-3">
-          <Label className="text-foreground text-sm">Front Photo (Optional)</Label>
+          <Label className="text-foreground text-sm">
+            Front Photo {apiFrontImageUrl ? "(Auto-fetched)" : "(Optional)"}
+          </Label>
           <label className="block cursor-pointer">
             {frontPreview ? (
               <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-border">
@@ -182,6 +260,11 @@ const AddProductPage = () => {
                   alt="Front preview"
                   className="w-full h-full object-cover"
                 />
+                {apiFrontImageUrl && frontPreview === apiFrontImageUrl && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-primary/90 text-primary-foreground text-xs py-1 text-center">
+                    From database
+                  </div>
+                )}
               </div>
             ) : (
               <div className="w-32 h-32 rounded-xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors">
@@ -194,7 +277,7 @@ const AddProductPage = () => {
               accept="image/*"
               capture="environment"
               className="hidden"
-              onChange={(e) => handleImageChange(e, setFrontImage, setFrontPreview)}
+              onChange={(e) => handleImageChange(e, setFrontImage, setFrontPreview, true)}
             />
           </label>
         </div>
@@ -232,12 +315,12 @@ const AddProductPage = () => {
         <Button
           type="submit"
           className="w-full h-14 text-base font-semibold"
-          disabled={isSubmitting || !name.trim()}
+          disabled={isSubmitting || !name.trim() || !backImage}
         >
           {isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Uploading...
+              Saving...
             </>
           ) : (
             "Submit for AI Analysis"
