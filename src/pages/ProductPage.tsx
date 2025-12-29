@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { HealthScore } from "@/components/product/HealthScore";
 import { IngredientAlert } from "@/components/product/IngredientAlert";
 import { BetterAlternative } from "@/components/product/BetterAlternative";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 // Mock data for demo when no barcode is provided
 const mockProduct = {
@@ -46,6 +48,9 @@ const ProductPage = () => {
   const { barcode } = useParams<{ barcode: string }>();
   const [searchParams] = useSearchParams();
   const isAnalyzing = searchParams.get("analyzing") === "true";
+  const [isRetrying, setIsRetrying] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", barcode],
@@ -62,7 +67,46 @@ const ProductPage = () => {
       return data;
     },
     enabled: !!barcode,
+    refetchInterval: (query) => {
+      // Auto-refetch every 5 seconds while analyzing
+      if (query.state.data?.health_score === null) {
+        return 5000;
+      }
+      return false;
+    },
   });
+
+  const handleRetryAnalysis = async () => {
+    if (!barcode) return;
+    
+    setIsRetrying(true);
+    try {
+      const { error } = await supabase.functions.invoke("analyze-product", {
+        body: { barcode },
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Analysis Started",
+        description: "AI is re-analyzing the product. Results will appear shortly.",
+      });
+      
+      // Refetch product data after a short delay
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["product", barcode] });
+      }, 3000);
+    } catch (error) {
+      console.error("Retry analysis error:", error);
+      toast({
+        title: "Analysis Failed",
+        description: "Could not start analysis. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   // Use mock data when no barcode (for demo purposes)
   const displayProduct = barcode ? product : mockProduct;
@@ -156,8 +200,18 @@ const ProductPage = () => {
               <HealthScore score={score} size="md" />
             )}
             {showAnalyzingBanner && (
-              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              <div className="flex items-center gap-2">
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                </div>
+                <button
+                  onClick={handleRetryAnalysis}
+                  disabled={isRetrying}
+                  className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-50"
+                  title="Retry Analysis"
+                >
+                  <RefreshCw className={`w-5 h-5 text-primary ${isRetrying ? 'animate-spin' : ''}`} />
+                </button>
               </div>
             )}
           </div>
@@ -214,9 +268,17 @@ const ProductPage = () => {
               <Sparkles className="w-8 h-8 text-primary" />
             </div>
             <h3 className="font-semibold text-foreground mb-2">Analyzing Ingredients</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-4">
               Our AI is reading the ingredients label and calculating the health score. This usually takes a few minutes.
             </p>
+            <button
+              onClick={handleRetryAnalysis}
+              disabled={isRetrying}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+              {isRetrying ? "Retrying..." : "Retry Analysis"}
+            </button>
           </div>
         )}
       </div>
