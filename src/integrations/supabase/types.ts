@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       products: {
         Row: {
+          analysis_summary: string | null
           back_image_url: string | null
           barcode: string
           brand: string | null
@@ -24,9 +25,12 @@ export type Database = {
           health_score: number | null
           ingredients_text: string | null
           name: string
+          negative_points: string[] | null
+          positive_points: string[] | null
           updated_at: string
         }
         Insert: {
+          analysis_summary?: string | null
           back_image_url?: string | null
           barcode: string
           brand?: string | null
@@ -35,9 +39,12 @@ export type Database = {
           health_score?: number | null
           ingredients_text?: string | null
           name: string
+          negative_points?: string[] | null
+          positive_points?: string[] | null
           updated_at?: string
         }
         Update: {
+          analysis_summary?: string | null
           back_image_url?: string | null
           barcode?: string
           brand?: string | null
@@ -46,6 +53,8 @@ export type Database = {
           health_score?: number | null
           ingredients_text?: string | null
           name?: string
+          negative_points?: string[] | null
+          positive_points?: string[] | null
           updated_at?: string
         }
         Relationships: []

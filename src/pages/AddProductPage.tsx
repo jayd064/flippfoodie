@@ -184,6 +184,15 @@ const AddProductPage = () => {
         description: "AI is analyzing the ingredients label...",
       });
 
+      // Trigger AI analysis in the background
+      supabase.functions.invoke("analyze-product", {
+        body: { barcode }
+      }).then(({ error: analyzeError }) => {
+        if (analyzeError) {
+          console.error("Analysis error:", analyzeError);
+        }
+      });
+
       navigate(`/product/${barcode}?analyzing=true`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
