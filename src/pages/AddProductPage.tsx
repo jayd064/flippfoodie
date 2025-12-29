@@ -181,18 +181,23 @@ const AddProductPage = () => {
 
       toast({
         title: "Product Added!",
-        description: "AI is analyzing the ingredients label...",
+        description: "Starting AI analysis...",
       });
 
-      // Trigger AI analysis in the background
+      // Immediately trigger AI analysis (don't wait for it to complete)
+      console.log("[AddProductPage] Triggering analyze-product for barcode:", barcode);
+      
       supabase.functions.invoke("analyze-product", {
         body: { barcode }
-      }).then(({ error: analyzeError }) => {
+      }).then(({ data, error: analyzeError }) => {
         if (analyzeError) {
-          console.error("Analysis error:", analyzeError);
+          console.error("[AddProductPage] Analysis invoke error:", analyzeError);
+        } else {
+          console.log("[AddProductPage] Analysis triggered successfully:", data);
         }
       });
 
+      // Navigate immediately - analysis runs in background
       navigate(`/product/${barcode}?analyzing=true`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
