@@ -196,24 +196,26 @@ const ProductPage = () => {
                 {productName}
               </h1>
             </div>
-            {!showAnalyzingBanner && score !== null && (
-              <HealthScore score={score} size="md" />
-            )}
-            {showAnalyzingBanner && (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {/* Health Score or Loading indicator */}
+              {showAnalyzingBanner ? (
                 <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
                   <Loader2 className="w-6 h-6 text-primary animate-spin" />
                 </div>
-                <button
-                  onClick={handleRetryAnalysis}
-                  disabled={isRetrying}
-                  className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-50"
-                  title="Retry Analysis"
-                >
-                  <RefreshCw className={`w-5 h-5 text-primary ${isRetrying ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-            )}
+              ) : score !== null ? (
+                <HealthScore score={score} size="md" />
+              ) : null}
+              
+              {/* Always show refresh button */}
+              <button
+                onClick={handleRetryAnalysis}
+                disabled={isRetrying}
+                className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-50"
+                title={showAnalyzingBanner ? "Retry Analysis" : "Refresh Score"}
+              >
+                <RefreshCw className={`w-5 h-5 text-primary ${isRetrying ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
 
