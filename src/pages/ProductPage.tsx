@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw, Clock } from "lucide-react";
+import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw, Clock, Bug } from "lucide-react";
 import { HealthScore } from "@/components/product/HealthScore";
 import { IngredientAlert } from "@/components/product/IngredientAlert";
 import { BetterAlternative } from "@/components/product/BetterAlternative";
@@ -45,13 +45,33 @@ const parseIngredients = (ingredientsText: string | null) => {
   return concerningIngredients;
 };
 
+// Get score color based on value
+const getScoreColor = (score: number) => {
+  if (score < 40) return "text-red-500";
+  if (score <= 70) return "text-yellow-500";
+  return "text-green-500";
+};
+
+const getScoreBgColor = (score: number) => {
+  if (score < 40) return "bg-red-500";
+  if (score <= 70) return "bg-yellow-500";
+  return "bg-green-500";
+};
+
 const ProductPage = () => {
   const { barcode } = useParams<{ barcode: string }>();
   const [searchParams] = useSearchParams();
   const isAnalyzing = searchParams.get("analyzing") === "true";
   const [isRetrying, setIsRetrying] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const addLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+  };
   
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", barcode],
@@ -69,9 +89,9 @@ const ProductPage = () => {
     },
     enabled: !!barcode,
     refetchInterval: (query) => {
-      // Auto-refetch every 5 seconds while analyzing
+      // Auto-refetch every 3 seconds while analyzing (faster polling)
       if (query.state.data?.health_score === null) {
-        return 5000;
+        return 3000;
       }
       return false;
     },
@@ -80,13 +100,23 @@ const ProductPage = () => {
   const handleRetryAnalysis = async () => {
     if (!barcode) return;
     
+    setDebugLogs([]);
+    addLog("Step 1: Button Clicked");
+    
     setIsRetrying(true);
     try {
-      const { error } = await supabase.functions.invoke("analyze-product", {
+      addLog("Step 2: Invoking Analyze Function...");
+      
+      const { data, error } = await supabase.functions.invoke("analyze-product", {
         body: { barcode },
       });
       
-      if (error) throw error;
+      if (error) {
+        addLog(`Step 3: ERROR - ${error.message}`);
+        throw error;
+      }
+      
+      addLog(`Step 3: SUCCESS - Score: ${data?.analysis?.health_score ?? 'N/A'}`);
       
       toast({
         title: "Analysis Started",
@@ -94,11 +124,14 @@ const ProductPage = () => {
       });
       
       // Refetch product data after a short delay
+      addLog("Step 4: Reloading Database...");
       setTimeout(async () => {
         await queryClient.invalidateQueries({ queryKey: ["product", barcode] });
+        addLog("Step 5: Database Reloaded!");
       }, 3000);
     } catch (error: any) {
       console.error("Retry analysis error:", error);
+      addLog(`ERROR: ${error?.message || 'Unknown error'}`);
       toast({
         title: "Analysis Failed",
         description: "Could not start analysis. Please try again.",
@@ -201,11 +234,13 @@ const ProductPage = () => {
               <div className="flex items-center gap-2">
                 {/* Health Score or Loading indicator */}
                 {showAnalyzingBanner ? (
-                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                    <Loader2 className="w-7 h-7 text-primary animate-spin" />
                   </div>
                 ) : score !== null ? (
-                  <HealthScore score={score} size="md" />
+                  <div className={`w-16 h-16 rounded-full ${getScoreBgColor(score)} flex items-center justify-center shadow-lg`}>
+                    <span className="text-2xl font-bold text-white">{score}</span>
+                  </div>
                 ) : null}
                 
                 {/* Always show refresh button */}
@@ -292,6 +327,35 @@ const ProductPage = () => {
               <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
               {isRetrying ? "Retrying..." : "Retry Analysis"}
             </button>
+          </div>
+        )}
+
+        {/* Hidden Debug Toggle */}
+        <div className="mt-8 text-center">
+          <button 
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors inline-flex items-center gap-1"
+          >
+            <Bug className="w-3 h-3" />
+            {showDebug ? "Hide Debug" : "Debug"}
+          </button>
+        </div>
+
+        {/* Debug Panel (Hidden by Default) */}
+        {showDebug && (
+          <div className="mt-2 bg-muted/50 rounded-xl p-4 border border-border animate-fade-up">
+            <h4 className="font-semibold text-foreground mb-2 text-sm">🔧 System Logs</h4>
+            <div className="bg-background rounded-lg p-3 max-h-40 overflow-y-auto font-mono text-xs space-y-1">
+              {debugLogs.length === 0 ? (
+                <p className="text-muted-foreground">Click "Refresh" to see debug logs...</p>
+              ) : (
+                debugLogs.map((log, i) => (
+                  <p key={i} className={log.includes('ERROR') ? 'text-destructive' : log.includes('SUCCESS') ? 'text-green-600' : 'text-foreground'}>
+                    {log}
+                  </p>
+                ))
+              )}
+            </div>
           </div>
         )}
 
