@@ -1,4 +1,5 @@
 import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight, Award } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const menuItems = [
   { icon: Bell, label: "Notifications", badge: "3" },
@@ -27,9 +28,12 @@ const ProfilePage = () => {
               <h2 className="text-lg font-semibold text-foreground">Guest User</h2>
               <p className="text-sm text-muted-foreground">Sign in to save your data</p>
             </div>
-            <button className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+            <Link 
+              to="/login"
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
               Sign In
-            </button>
+            </Link>
           </div>
         </div>
       </div>
