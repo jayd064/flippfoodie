@@ -1,6 +1,6 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2 } from "lucide-react";
+import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles } from "lucide-react";
 import { HealthScore } from "@/components/product/HealthScore";
 import { IngredientAlert } from "@/components/product/IngredientAlert";
 import { BetterAlternative } from "@/components/product/BetterAlternative";
@@ -44,8 +44,10 @@ const parseIngredients = (ingredientsText: string | null) => {
 
 const ProductPage = () => {
   const { barcode } = useParams<{ barcode: string }>();
+  const [searchParams] = useSearchParams();
+  const isAnalyzing = searchParams.get("analyzing") === "true";
   
-  const { data: product, isLoading, error } = useQuery({
+  const { data: product, isLoading } = useQuery({
     queryKey: ["product", barcode],
     queryFn: async () => {
       if (!barcode) return null;
@@ -64,7 +66,10 @@ const ProductPage = () => {
 
   // Use mock data when no barcode (for demo purposes)
   const displayProduct = barcode ? product : mockProduct;
-  const ingredients = parseIngredients(displayProduct?.ingredients_text || mockProduct.ingredients_text);
+  const ingredients = parseIngredients(displayProduct?.ingredients_text || (barcode ? null : mockProduct.ingredients_text));
+  
+  // Check if AI is still analyzing (no health score yet)
+  const showAnalyzingBanner = isAnalyzing || (product && product.health_score === null);
 
   if (isLoading) {
     return (
@@ -93,12 +98,22 @@ const ProductPage = () => {
   const imageUrl = displayProduct?.front_image_url || mockProduct.front_image_url;
   const productName = displayProduct?.name || mockProduct.name;
   const productBrand = displayProduct?.brand || mockProduct.brand;
-  const score = displayProduct?.health_score || mockProduct.health_score;
+  const score = displayProduct?.health_score ?? mockProduct.health_score;
 
   return (
     <div className="min-h-screen pb-8">
+      {/* AI Analyzing Banner */}
+      {showAnalyzingBanner && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-3 px-4">
+          <div className="flex items-center justify-center gap-2 animate-pulse">
+            <Sparkles className="w-5 h-5" />
+            <span className="text-sm font-medium">AI is Analyzing Label... Check back soon</span>
+          </div>
+        </div>
+      )}
+
       {/* Header Image */}
-      <div className="relative h-56">
+      <div className={`relative h-56 ${showAnalyzingBanner ? 'mt-12' : ''}`}>
         <img
           src={imageUrl}
           alt={productName}
@@ -137,49 +152,73 @@ const ProductPage = () => {
                 {productName}
               </h1>
             </div>
-            <HealthScore score={score} size="md" />
+            {!showAnalyzingBanner && score !== null && (
+              <HealthScore score={score} size="md" />
+            )}
+            {showAnalyzingBanner && (
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              </div>
+            )}
           </div>
         </div>
 
         {/* Ingredient Alerts */}
-        {ingredients.length > 0 && (
+        {!showAnalyzingBanner && ingredients.length > 0 && (
           <div className="mt-5">
             <IngredientAlert ingredients={ingredients} />
           </div>
         )}
 
         {/* Better Alternative */}
-        <div className="mt-5">
-          <BetterAlternative product={mockAlternative} />
-        </div>
+        {!showAnalyzingBanner && (
+          <div className="mt-5">
+            <BetterAlternative product={mockAlternative} />
+          </div>
+        )}
 
         {/* Nutritional Overview */}
-        <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-300">
-          <h3 className="font-semibold text-foreground mb-4">Nutritional Facts</h3>
-          <div className="space-y-3">
-            {[
-              { label: "Calories", value: "180 kcal", bar: 35 },
-              { label: "Sugar", value: "25g", bar: 85 },
-              { label: "Fat", value: "8g", bar: 45 },
-              { label: "Fiber", value: "2g", bar: 15 },
-            ].map((item) => (
-              <div key={item.label}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">{item.label}</span>
-                  <span className="font-medium text-foreground">{item.value}</span>
+        {!showAnalyzingBanner && (
+          <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-300">
+            <h3 className="font-semibold text-foreground mb-4">Nutritional Facts</h3>
+            <div className="space-y-3">
+              {[
+                { label: "Calories", value: "180 kcal", bar: 35 },
+                { label: "Sugar", value: "25g", bar: 85 },
+                { label: "Fat", value: "8g", bar: 45 },
+                { label: "Fiber", value: "2g", bar: 15 },
+              ].map((item) => (
+                <div key={item.label}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-muted-foreground">{item.label}</span>
+                    <span className="font-medium text-foreground">{item.value}</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        item.bar > 70 ? "bg-score-bad" : item.bar > 40 ? "bg-score-medium" : "bg-score-good"
+                      }`}
+                      style={{ width: `${item.bar}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      item.bar > 70 ? "bg-score-bad" : item.bar > 40 ? "bg-score-medium" : "bg-score-good"
-                    }`}
-                    style={{ width: `${item.bar}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Analyzing State Content */}
+        {showAnalyzingBanner && (
+          <div className="mt-5 bg-card rounded-2xl p-6 border border-border/50 shadow-soft text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">Analyzing Ingredients</h3>
+            <p className="text-sm text-muted-foreground">
+              Our AI is reading the ingredients label and calculating the health score. This usually takes a few minutes.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
