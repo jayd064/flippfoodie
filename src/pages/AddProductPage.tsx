@@ -11,6 +11,7 @@ interface OpenFoodFactsProduct {
   product_name?: string;
   brands?: string;
   image_front_url?: string;
+  image_ingredients_url?: string;
 }
 
 const AddProductPage = () => {
@@ -28,6 +29,7 @@ const AddProductPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [apiFrontImageUrl, setApiFrontImageUrl] = useState<string | null>(null);
+  const [apiIngredientsImageUrl, setApiIngredientsImageUrl] = useState<string | null>(null);
 
   // Auto-fetch from OpenFoodFacts on page load
   useEffect(() => {
@@ -59,10 +61,18 @@ const AddProductPage = () => {
             setApiFrontImageUrl(product.image_front_url);
             setFrontPreview(product.image_front_url);
           }
+
+          // Set ingredients image from API if available
+          if (product.image_ingredients_url) {
+            setApiIngredientsImageUrl(product.image_ingredients_url);
+            setBackPreview(product.image_ingredients_url);
+          }
           
           toast({
             title: "Product Found!",
-            description: "Auto-filled from OpenFoodFacts database.",
+            description: product.image_ingredients_url 
+              ? "Auto-filled with ingredients image from database." 
+              : "Auto-filled from OpenFoodFacts database.",
           });
         }
       } catch (error) {
@@ -129,7 +139,8 @@ const AddProductPage = () => {
       return;
     }
 
-    if (!backImage) {
+    // Require ingredients photo (either from API or user capture)
+    if (!backImage && !apiIngredientsImageUrl) {
       toast({
         title: "Error",
         description: "Please take a photo of the ingredients label",
@@ -142,15 +153,17 @@ const AddProductPage = () => {
 
     try {
       let frontImageUrl: string | null = apiFrontImageUrl;
-      let backImageUrl: string | null = null;
+      let backImageUrl: string | null = apiIngredientsImageUrl;
 
       // Upload front image if user took a new one
       if (frontImage) {
         frontImageUrl = await uploadImage(frontImage, "front");
       }
       
-      // Always upload the back/ingredients image
-      backImageUrl = await uploadImage(backImage, "back");
+      // Upload back/ingredients image if user took one (overrides API image)
+      if (backImage) {
+        backImageUrl = await uploadImage(backImage, "back");
+      }
 
       const { error } = await supabase.from("products").insert({
         barcode,
@@ -180,6 +193,9 @@ const AddProductPage = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Check if we have both name and ingredients to show one-click submit
+  const hasNameAndIngredients = name.trim() && (backImage || apiIngredientsImageUrl);
 
   return (
     <div className="min-h-screen pb-24">
@@ -212,7 +228,7 @@ const AddProductPage = () => {
         {/* Main Action - Take Photo of Ingredients */}
         <div className="space-y-3">
           <Label className="text-foreground text-base font-semibold">
-            📸 Take Photo of Ingredients *
+            📸 {apiIngredientsImageUrl && backPreview === apiIngredientsImageUrl ? "Ingredients Photo (Auto-fetched)" : "Take Photo of Ingredients *"}
           </Label>
           <label className="block cursor-pointer">
             {backPreview ? (
@@ -222,6 +238,11 @@ const AddProductPage = () => {
                   alt="Ingredients preview"
                   className="w-full aspect-[4/3] object-cover"
                 />
+                {apiIngredientsImageUrl && backPreview === apiIngredientsImageUrl && (
+                  <div className="absolute top-2 right-2 bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
+                    From database
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                   <div className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium">
                     Tap to retake
@@ -242,7 +263,10 @@ const AddProductPage = () => {
               accept="image/*"
               capture="environment"
               className="hidden"
-              onChange={(e) => handleImageChange(e, setBackImage, setBackPreview)}
+              onChange={(e) => {
+                handleImageChange(e, setBackImage, setBackPreview);
+                setApiIngredientsImageUrl(null); // Clear API image when user takes new one
+              }}
             />
           </label>
         </div>
@@ -315,13 +339,15 @@ const AddProductPage = () => {
         <Button
           type="submit"
           className="w-full h-14 text-base font-semibold"
-          disabled={isSubmitting || !name.trim() || !backImage}
+          disabled={isSubmitting || !hasNameAndIngredients}
         >
           {isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
               Saving...
             </>
+          ) : hasNameAndIngredients ? (
+            "Confirm & Analyze"
           ) : (
             "Submit for AI Analysis"
           )}
