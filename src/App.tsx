@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import Index from "./pages/Index";
 import ProductPage from "./pages/ProductPage";
+import AddProductPage from "./pages/AddProductPage";
 import HistoryPage from "./pages/HistoryPage";
 import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
@@ -23,6 +24,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/product" element={<ProductPage />} />
+            <Route path="/product/:barcode" element={<ProductPage />} />
+            <Route path="/add-product" element={<AddProductPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/login" element={<LoginPage />} />
