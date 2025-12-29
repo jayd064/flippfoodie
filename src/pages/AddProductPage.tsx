@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, Camera, Upload, Loader2 } from "lucide-react";
+import { ArrowLeft, Camera, Loader2 } from "lucide-react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +15,6 @@ const AddProductPage = () => {
   
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
-  const [ingredients, setIngredients] = useState("");
   const [frontImage, setFrontImage] = useState<File | null>(null);
   const [backImage, setBackImage] = useState<File | null>(null);
   const [frontPreview, setFrontPreview] = useState<string | null>(null);
@@ -85,15 +83,12 @@ const AddProductPage = () => {
         backImageUrl = await uploadImage(backImage, "back");
       }
 
-      // Calculate a basic health score (placeholder - can be enhanced with AI later)
-      const healthScore = Math.floor(Math.random() * 40) + 30; // Random 30-70 for now
-
       const { error } = await supabase.from("products").insert({
         barcode,
         name: name.trim(),
         brand: brand.trim() || null,
-        ingredients_text: ingredients.trim() || null,
-        health_score: healthScore,
+        ingredients_text: null,
+        health_score: null, // AI will analyze
         front_image_url: frontImageUrl,
         back_image_url: backImageUrl,
       });
@@ -102,10 +97,10 @@ const AddProductPage = () => {
 
       toast({
         title: "Product Added!",
-        description: "Thank you for contributing to our database.",
+        description: "AI is analyzing the ingredients label...",
       });
 
-      navigate(`/product/${barcode}`);
+      navigate(`/product/${barcode}?analyzing=true`);
     } catch (error) {
       console.error("Error adding product:", error);
       toast({
@@ -138,62 +133,70 @@ const AddProductPage = () => {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="px-5 py-6 space-y-6">
-        {/* Product Images */}
+        {/* Main Action - Take Photo of Ingredients */}
         <div className="space-y-3">
-          <Label className="text-foreground">Product Photos</Label>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Front Image */}
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Front</p>
-              <label className="block aspect-[3/4] rounded-xl border-2 border-dashed border-border bg-muted/50 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
-                {frontPreview ? (
-                  <img
-                    src={frontPreview}
-                    alt="Front preview"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <Camera className="w-8 h-8" />
-                    <span className="text-xs">Add Photo</span>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => handleImageChange(e, setFrontImage, setFrontPreview)}
+          <Label className="text-foreground text-base font-semibold">
+            📸 Take Photo of Ingredients
+          </Label>
+          <label className="block cursor-pointer">
+            {backPreview ? (
+              <div className="relative rounded-2xl overflow-hidden border-2 border-primary shadow-lg">
+                <img
+                  src={backPreview}
+                  alt="Ingredients preview"
+                  className="w-full aspect-[4/3] object-cover"
                 />
-              </label>
-            </div>
+                <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                  <div className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium">
+                    Tap to retake
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-primary bg-primary/5 flex flex-col items-center justify-center gap-3 hover:bg-primary/10 transition-colors">
+                <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
+                  <Camera className="w-8 h-8 text-primary-foreground" />
+                </div>
+                <span className="text-primary font-medium">Take Photo of Ingredients</span>
+                <span className="text-xs text-muted-foreground">Point camera at the back label</span>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => handleImageChange(e, setBackImage, setBackPreview)}
+            />
+          </label>
+        </div>
 
-            {/* Back Image */}
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Ingredients</p>
-              <label className="block aspect-[3/4] rounded-xl border-2 border-dashed border-border bg-muted/50 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
-                {backPreview ? (
-                  <img
-                    src={backPreview}
-                    alt="Back preview"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <Upload className="w-8 h-8" />
-                    <span className="text-xs">Add Photo</span>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => handleImageChange(e, setBackImage, setBackPreview)}
+        {/* Optional Front Image */}
+        <div className="space-y-3">
+          <Label className="text-foreground text-sm">Front Photo (Optional)</Label>
+          <label className="block cursor-pointer">
+            {frontPreview ? (
+              <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-border">
+                <img
+                  src={frontPreview}
+                  alt="Front preview"
+                  className="w-full h-full object-cover"
                 />
-              </label>
-            </div>
-          </div>
+              </div>
+            ) : (
+              <div className="w-32 h-32 rounded-xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors">
+                <Camera className="w-6 h-6 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Add Front</span>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => handleImageChange(e, setFrontImage, setFrontPreview)}
+            />
+          </label>
         </div>
 
         {/* Product Name */}
@@ -225,33 +228,19 @@ const AddProductPage = () => {
           />
         </div>
 
-        {/* Ingredients */}
-        <div className="space-y-2">
-          <Label htmlFor="ingredients" className="text-foreground">
-            Ingredients List
-          </Label>
-          <Textarea
-            id="ingredients"
-            value={ingredients}
-            onChange={(e) => setIngredients(e.target.value)}
-            placeholder="Enter ingredients from the package..."
-            className="bg-card border-border min-h-[120px]"
-          />
-        </div>
-
         {/* Submit Button */}
         <Button
           type="submit"
-          className="w-full h-12 text-base"
+          className="w-full h-14 text-base font-semibold"
           disabled={isSubmitting || !name.trim()}
         >
           {isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Adding Product...
+              Uploading...
             </>
           ) : (
-            "Add Product"
+            "Submit for AI Analysis"
           )}
         </Button>
       </form>
