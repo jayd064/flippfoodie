@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import ProductPage from "./pages/ProductPage";
 import HistoryPage from "./pages/HistoryPage";
 import ProfilePage from "./pages/ProfilePage";
+import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/product" element={<ProductPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </MobileLayout>
