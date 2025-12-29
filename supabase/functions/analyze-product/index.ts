@@ -47,10 +47,10 @@ serve(async (req) => {
 
     console.log(`[analyze-product] Found product: ${product.name}`);
 
-    // Get the image URL for analysis (prefer back/ingredients image)
-    const imageUrl = product.back_image_url || product.front_image_url;
+    // Get the UNIQUE image URL for analysis (prefer back/ingredients image)
+    const ingredientsImageUrl = product.back_image_url || product.front_image_url;
     
-    if (!imageUrl) {
+    if (!ingredientsImageUrl) {
       console.log(`[analyze-product] No image available for analysis`);
       return new Response(
         JSON.stringify({ error: "No image available for analysis" }),
@@ -58,30 +58,39 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[analyze-product] Analyzing image: ${imageUrl}`);
+    // CRITICAL: Log the exact unique URL being analyzed
+    console.log(`[analyze-product] *** ANALYZING UNIQUE IMAGE ***`);
+    console.log(`[analyze-product] Image URL: ${ingredientsImageUrl}`);
+    console.log(`[analyze-product] Product: ${product.name} | Brand: ${product.brand || 'Unknown'} | Barcode: ${barcode}`);
 
-    // Prepare AI prompt for ingredient analysis
-    const systemPrompt = `You are a food health analyst. Analyze the ingredients from the provided product image and return a JSON response.
+    // Prepare AI prompt with explicit instructions to analyze THIS specific image
+    const systemPrompt = `You are a food health analyst. Your task is to analyze the SPECIFIC ingredient label image provided.
 
-Your task:
-1. Extract and read all ingredient text from the image (OCR)
-2. Identify harmful additives, preservatives, artificial colors, and chemicals
-3. Check for high sugar content, palm oil, trans fats, and processed ingredients
-4. Calculate a Health Score from 0-100 where:
+CRITICAL INSTRUCTIONS:
+- You MUST extract and read the ACTUAL text from THIS specific image using OCR
+- DO NOT provide generic or default scores - analyze the REAL ingredients you see
+- If you cannot read the image clearly, say so in the summary
+- The score MUST reflect the ACTUAL ingredients visible in this image
+
+Analysis Steps:
+1. OCR: Extract ALL ingredient text visible in this image
+2. Identify: Harmful additives, preservatives, artificial colors, chemicals
+3. Check: Sugar content, palm oil, trans fats, processed ingredients
+4. Calculate Health Score (0-100):
    - 80-100: Very healthy (whole foods, minimal processing)
    - 60-79: Good (some processing but mostly healthy)
    - 40-59: Moderate (notable concerns but acceptable)
    - 20-39: Poor (significant health concerns)
    - 0-19: Very unhealthy (highly processed, many harmful ingredients)
 
-5. Generate a brief 1-2 sentence summary
-6. List 2-4 positive points about the product
-7. List 2-4 negative points or concerns
+5. Generate a 1-2 sentence summary of THIS product
+6. List 2-4 positive points
+7. List 2-4 negative points
 
-IMPORTANT: Respond ONLY with valid JSON in this exact format:
+RESPOND ONLY with valid JSON:
 {
-  "health_score": <number 0-100>,
-  "analysis_summary": "<brief summary>",
+  "health_score": <number 0-100 based on ACTUAL ingredients>,
+  "analysis_summary": "<summary of THIS product>",
   "positive_points": ["point 1", "point 2"],
   "negative_points": ["concern 1", "concern 2"]
 }`;
@@ -92,6 +101,7 @@ IMPORTANT: Respond ONLY with valid JSON in this exact format:
     }
 
     // Call Lovable AI Gateway with vision capabilities
+    console.log(`[analyze-product] Sending to Gemini Flash...`);
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -107,17 +117,25 @@ IMPORTANT: Respond ONLY with valid JSON in this exact format:
             content: [
               {
                 type: "text",
-                text: `Analyze the ingredients in this product image and provide a health assessment. Product name: ${product.name || "Unknown"}, Brand: ${product.brand || "Unknown"}`
+                text: `ANALYZE THIS SPECIFIC IMAGE NOW. Extract the ingredients from the image and calculate a health score.
+
+Product: ${product.name || "Unknown"}
+Brand: ${product.brand || "Unknown"}
+Barcode: ${barcode}
+Image URL: ${ingredientsImageUrl}
+
+READ THE ACTUAL TEXT IN THIS IMAGE and provide a score based on what you see.`
               },
               {
                 type: "image_url",
-                image_url: { url: imageUrl }
+                image_url: { url: ingredientsImageUrl }
               }
             ]
           }
         ],
       }),
     });
+    console.log(`[analyze-product] Gemini response status: ${aiResponse.status}`);
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
