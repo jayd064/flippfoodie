@@ -167,7 +167,7 @@ IMPORTANT: Respond ONLY with valid JSON in this exact format:
 
     console.log(`[analyze-product] Final analysis:`, analysis);
 
-    // Update product with analysis results
+    // Update product with analysis results and timestamp
     const { error: updateError } = await supabase
       .from("products")
       .update({
@@ -175,7 +175,8 @@ IMPORTANT: Respond ONLY with valid JSON in this exact format:
         analysis_summary: analysis.analysis_summary,
         positive_points: analysis.positive_points,
         negative_points: analysis.negative_points,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        last_analyzed_at: new Date().toISOString()
       })
       .eq("barcode", barcode);
 

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw, Clock } from "lucide-react";
 import { HealthScore } from "@/components/product/HealthScore";
 import { IngredientAlert } from "@/components/product/IngredientAlert";
 import { BetterAlternative } from "@/components/product/BetterAlternative";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 // Mock data for demo when no barcode is provided
 const mockProduct = {
@@ -196,25 +197,35 @@ const ProductPage = () => {
                 {productName}
               </h1>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Health Score or Loading indicator */}
-              {showAnalyzingBanner ? (
-                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
-                </div>
-              ) : score !== null ? (
-                <HealthScore score={score} size="md" />
-              ) : null}
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                {/* Health Score or Loading indicator */}
+                {showAnalyzingBanner ? (
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                  </div>
+                ) : score !== null ? (
+                  <HealthScore score={score} size="md" />
+                ) : null}
+                
+                {/* Always show refresh button */}
+                <button
+                  onClick={handleRetryAnalysis}
+                  disabled={isRetrying}
+                  className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-50"
+                  title={showAnalyzingBanner ? "Retry Analysis" : "Refresh Score"}
+                >
+                  <RefreshCw className={`w-5 h-5 text-primary ${isRetrying ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
               
-              {/* Always show refresh button */}
-              <button
-                onClick={handleRetryAnalysis}
-                disabled={isRetrying}
-                className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-50"
-                title={showAnalyzingBanner ? "Retry Analysis" : "Refresh Score"}
-              >
-                <RefreshCw className={`w-5 h-5 text-primary ${isRetrying ? 'animate-spin' : ''}`} />
-              </button>
+              {/* Last analyzed timestamp */}
+              {product?.last_analyzed_at && !showAnalyzingBanner && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="w-3 h-3" />
+                  <span>Updated: {format(new Date(product.last_analyzed_at), "h:mm a")}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

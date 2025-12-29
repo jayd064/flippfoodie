@@ -24,6 +24,7 @@ export type Database = {
           front_image_url: string | null
           health_score: number | null
           ingredients_text: string | null
+          last_analyzed_at: string | null
           name: string
           negative_points: string[] | null
           positive_points: string[] | null
@@ -38,6 +39,7 @@ export type Database = {
           front_image_url?: string | null
           health_score?: number | null
           ingredients_text?: string | null
+          last_analyzed_at?: string | null
           name: string
           negative_points?: string[] | null
           positive_points?: string[] | null
@@ -52,6 +54,7 @@ export type Database = {
           front_image_url?: string | null
           health_score?: number | null
           ingredients_text?: string | null
+          last_analyzed_at?: string | null
           name?: string
           negative_points?: string[] | null
           positive_points?: string[] | null
