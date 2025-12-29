@@ -1,18 +1,18 @@
-import { ArrowLeft, Share2, Bookmark } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Share2, Bookmark, Loader2 } from "lucide-react";
 import { HealthScore } from "@/components/product/HealthScore";
 import { IngredientAlert } from "@/components/product/IngredientAlert";
 import { BetterAlternative } from "@/components/product/BetterAlternative";
+import { supabase } from "@/integrations/supabase/client";
 
+// Mock data for demo when no barcode is provided
 const mockProduct = {
   name: "Oat Cookies",
   brand: "Nature's Best",
-  score: 35,
-  image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=300&fit=crop",
-  ingredients: [
-    { name: "Palm Oil", concern: "High in saturated fats, environmental concerns" },
-    { name: "Added Sugar", concern: "25g per serving, exceeds daily recommended intake" },
-  ],
+  health_score: 35,
+  front_image_url: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=300&fit=crop",
+  ingredients_text: "Wheat flour, palm oil, sugar, oats, glucose syrup, raising agents, salt, emulsifier",
 };
 
 const mockAlternative = {
@@ -22,14 +22,86 @@ const mockAlternative = {
   image: "https://images.unsplash.com/photo-1499636136210-6598f4a9a2e0?w=200&h=200&fit=crop",
 };
 
+// Parse ingredients to find concerning ones
+const parseIngredients = (ingredientsText: string | null) => {
+  if (!ingredientsText) return [];
+  
+  const concerningIngredients: { name: string; concern: string }[] = [];
+  const text = ingredientsText.toLowerCase();
+  
+  if (text.includes("palm oil")) {
+    concerningIngredients.push({ name: "Palm Oil", concern: "High in saturated fats, environmental concerns" });
+  }
+  if (text.includes("sugar") || text.includes("glucose") || text.includes("fructose")) {
+    concerningIngredients.push({ name: "Added Sugar", concern: "May exceed daily recommended intake" });
+  }
+  if (text.includes("sodium") || text.includes("salt")) {
+    concerningIngredients.push({ name: "High Sodium", concern: "May contribute to high blood pressure" });
+  }
+  
+  return concerningIngredients;
+};
+
 const ProductPage = () => {
+  const { barcode } = useParams<{ barcode: string }>();
+  
+  const { data: product, isLoading, error } = useQuery({
+    queryKey: ["product", barcode],
+    queryFn: async () => {
+      if (!barcode) return null;
+      
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("barcode", barcode)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!barcode,
+  });
+
+  // Use mock data when no barcode (for demo purposes)
+  const displayProduct = barcode ? product : mockProduct;
+  const ingredients = parseIngredients(displayProduct?.ingredients_text || mockProduct.ingredients_text);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading product...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (barcode && !product && !isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-5">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Product not found</p>
+          <Link to="/" className="text-primary hover:underline">
+            Go back home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const imageUrl = displayProduct?.front_image_url || mockProduct.front_image_url;
+  const productName = displayProduct?.name || mockProduct.name;
+  const productBrand = displayProduct?.brand || mockProduct.brand;
+  const score = displayProduct?.health_score || mockProduct.health_score;
+
   return (
     <div className="min-h-screen pb-8">
       {/* Header Image */}
       <div className="relative h-56">
         <img
-          src={mockProduct.image}
-          alt={mockProduct.name}
+          src={imageUrl}
+          alt={productName}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
@@ -60,19 +132,21 @@ const ProductPage = () => {
         <div className="bg-card rounded-2xl p-5 shadow-card border border-border/50 animate-fade-up">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="text-sm text-muted-foreground">{mockProduct.brand}</p>
+              <p className="text-sm text-muted-foreground">{productBrand}</p>
               <h1 className="text-xl font-bold text-foreground mt-1">
-                {mockProduct.name}
+                {productName}
               </h1>
             </div>
-            <HealthScore score={mockProduct.score} size="md" />
+            <HealthScore score={score} size="md" />
           </div>
         </div>
 
         {/* Ingredient Alerts */}
-        <div className="mt-5">
-          <IngredientAlert ingredients={mockProduct.ingredients} />
-        </div>
+        {ingredients.length > 0 && (
+          <div className="mt-5">
+            <IngredientAlert ingredients={ingredients} />
+          </div>
+        )}
 
         {/* Better Alternative */}
         <div className="mt-5">

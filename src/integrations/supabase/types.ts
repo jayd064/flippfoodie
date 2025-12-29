@@ -14,7 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      products: {
+        Row: {
+          back_image_url: string | null
+          barcode: string
+          brand: string | null
+          created_at: string
+          front_image_url: string | null
+          health_score: number | null
+          ingredients_text: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          back_image_url?: string | null
+          barcode: string
+          brand?: string | null
+          created_at?: string
+          front_image_url?: string | null
+          health_score?: number | null
+          ingredients_text?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          back_image_url?: string | null
+          barcode?: string
+          brand?: string | null
+          created_at?: string
+          front_image_url?: string | null
+          health_score?: number | null
+          ingredients_text?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      scans: {
+        Row: {
+          id: string
+          product_barcode: string
+          scanned_at: string
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          product_barcode: string
+          scanned_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          product_barcode?: string
+          scanned_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scans_product_barcode_fkey"
+            columns: ["product_barcode"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["barcode"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
