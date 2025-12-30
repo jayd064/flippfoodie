@@ -12,7 +12,146 @@ interface AnalysisResult {
   analysis_summary: string;
   positive_points: string[];
   negative_points: string[];
+  source: "openfoodfacts" | "ai" | "failed";
 }
+
+interface OpenFoodFactsProduct {
+  product_name?: string;
+  brands?: string;
+  ingredients_text?: string;
+  nutriments?: {
+    "energy-kcal_100g"?: number;
+    sugars_100g?: number;
+    fat_100g?: number;
+    "saturated-fat_100g"?: number;
+    proteins_100g?: number;
+    fiber_100g?: number;
+    sodium_100g?: number;
+    salt_100g?: number;
+  };
+  nutriscore_grade?: string;
+  nova_group?: number;
+}
+
+// Calculate health score from OpenFoodFacts data
+const calculateHealthScore = (product: OpenFoodFactsProduct): number => {
+  let score = 70; // Start with a moderate score
+  
+  const nutriments = product.nutriments || {};
+  
+  // Deduct for high sugar (per 100g)
+  const sugar = nutriments.sugars_100g;
+  if (sugar !== undefined) {
+    if (sugar > 20) score -= 25;
+    else if (sugar > 10) score -= 15;
+    else if (sugar > 5) score -= 5;
+  }
+  
+  // Deduct for high fat
+  const fat = nutriments.fat_100g;
+  if (fat !== undefined) {
+    if (fat > 20) score -= 15;
+    else if (fat > 10) score -= 8;
+  }
+  
+  // Deduct for saturated fat
+  const satFat = nutriments["saturated-fat_100g"];
+  if (satFat !== undefined) {
+    if (satFat > 5) score -= 15;
+    else if (satFat > 2) score -= 8;
+  }
+  
+  // Deduct for high sodium/salt
+  const sodium = nutriments.sodium_100g || (nutriments.salt_100g ? nutriments.salt_100g / 2.5 : undefined);
+  if (sodium !== undefined) {
+    if (sodium > 0.6) score -= 15;
+    else if (sodium > 0.3) score -= 8;
+  }
+  
+  // Bonus for protein
+  const protein = nutriments.proteins_100g;
+  if (protein !== undefined && protein > 10) score += 10;
+  
+  // Bonus for fiber
+  const fiber = nutriments.fiber_100g;
+  if (fiber !== undefined && fiber > 5) score += 10;
+  
+  // Use Nutriscore if available for adjustment
+  if (product.nutriscore_grade) {
+    const nutriscoreBonus: Record<string, number> = {
+      'a': 15, 'b': 8, 'c': 0, 'd': -10, 'e': -20
+    };
+    score += nutriscoreBonus[product.nutriscore_grade.toLowerCase()] || 0;
+  }
+  
+  // Nova group penalty (ultra-processed)
+  if (product.nova_group === 4) score -= 15;
+  
+  return Math.max(0, Math.min(100, Math.round(score)));
+};
+
+// Generate summary and points from OpenFoodFacts data
+const generateAnalysisFromOFF = (product: OpenFoodFactsProduct, healthScore: number): AnalysisResult => {
+  const positivePoints: string[] = [];
+  const negativePoints: string[] = [];
+  const nutriments = product.nutriments || {};
+  
+  // Positive points
+  if (nutriments.proteins_100g && nutriments.proteins_100g > 10) {
+    positivePoints.push(`Good protein content (${nutriments.proteins_100g.toFixed(1)}g per 100g)`);
+  }
+  if (nutriments.fiber_100g && nutriments.fiber_100g > 3) {
+    positivePoints.push(`Contains dietary fiber (${nutriments.fiber_100g.toFixed(1)}g per 100g)`);
+  }
+  if (product.nutriscore_grade && ['a', 'b'].includes(product.nutriscore_grade.toLowerCase())) {
+    positivePoints.push(`Good Nutri-Score: ${product.nutriscore_grade.toUpperCase()}`);
+  }
+  if (nutriments.sugars_100g !== undefined && nutriments.sugars_100g < 5) {
+    positivePoints.push("Low in sugar");
+  }
+  
+  // Negative points
+  if (nutriments.sugars_100g && nutriments.sugars_100g > 15) {
+    negativePoints.push(`High sugar content (${nutriments.sugars_100g.toFixed(1)}g per 100g)`);
+  }
+  if (nutriments["saturated-fat_100g"] && nutriments["saturated-fat_100g"] > 5) {
+    negativePoints.push(`High in saturated fat (${nutriments["saturated-fat_100g"].toFixed(1)}g per 100g)`);
+  }
+  if (product.nova_group === 4) {
+    negativePoints.push("Ultra-processed food (NOVA Group 4)");
+  }
+  const sodium = nutriments.sodium_100g || (nutriments.salt_100g ? nutriments.salt_100g / 2.5 : undefined);
+  if (sodium && sodium > 0.6) {
+    negativePoints.push("High sodium content");
+  }
+  
+  // Ensure at least one point in each category
+  if (positivePoints.length === 0) {
+    positivePoints.push("Product data available from global database");
+  }
+  if (negativePoints.length === 0 && healthScore < 70) {
+    negativePoints.push("Limited nutritional information available");
+  }
+  
+  // Generate summary
+  let summary = "";
+  if (healthScore >= 70) {
+    summary = `${product.product_name || "This product"} is a relatively healthy choice with a score of ${healthScore}/100.`;
+  } else if (healthScore >= 40) {
+    summary = `${product.product_name || "This product"} has some nutritional concerns. Consume in moderation.`;
+  } else {
+    summary = `${product.product_name || "This product"} has significant nutritional concerns. Consider healthier alternatives.`;
+  }
+  
+  return {
+    health_score: healthScore,
+    ingredients_text: product.ingredients_text || undefined,
+    analysis_summary: summary,
+    positive_points: positivePoints.slice(0, 4),
+    negative_points: negativePoints.slice(0, 4),
+    source: "openfoodfacts"
+  };
+};
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -27,14 +166,14 @@ serve(async (req) => {
       throw new Error("Barcode is required");
     }
 
-    console.log(`[analyze-product] Starting analysis for barcode: ${barcode}`);
+    console.log(`[analyze-product] Starting hybrid analysis for barcode: ${barcode}`);
 
     // Initialize Supabase client with service role for updates
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch product data
+    // Fetch product data from our DB
     const { data: product, error: fetchError } = await supabase
       .from("products")
       .select("*")
@@ -48,30 +187,62 @@ serve(async (req) => {
 
     console.log(`[analyze-product] Found product: ${product.name}`);
 
-    // Get the UNIQUE image URL for analysis (prefer back/ingredients image)
-    const ingredientsImageUrl = product.back_image_url || product.front_image_url;
+    // PRIORITY 1: Try OpenFoodFacts API first (instant data)
+    console.log(`[analyze-product] Trying OpenFoodFacts API...`);
+    let analysis: AnalysisResult | null = null;
     
-    if (!ingredientsImageUrl) {
-      console.log(`[analyze-product] No image available for analysis`);
-      return new Response(
-        JSON.stringify({ error: "No image available for analysis" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    try {
+      const offResponse = await fetch(
+        `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
+        { headers: { "User-Agent": "FlipApp/1.0" } }
       );
+      
+      if (offResponse.ok) {
+        const offData = await offResponse.json();
+        
+        if (offData.status === 1 && offData.product) {
+          console.log(`[analyze-product] ✅ OpenFoodFacts HIT! Product: ${offData.product.product_name}`);
+          
+          const offProduct: OpenFoodFactsProduct = offData.product;
+          const healthScore = calculateHealthScore(offProduct);
+          
+          analysis = generateAnalysisFromOFF(offProduct, healthScore);
+          
+          console.log(`[analyze-product] OpenFoodFacts score: ${healthScore}, source: openfoodfacts`);
+        } else {
+          console.log(`[analyze-product] OpenFoodFacts: Product not found (status: ${offData.status})`);
+        }
+      }
+    } catch (offError) {
+      console.error(`[analyze-product] OpenFoodFacts API error:`, offError);
     }
 
-    // CRITICAL: Log the exact unique URL being analyzed
-    console.log(`[analyze-product] *** ANALYZING UNIQUE IMAGE ***`);
-    console.log(`[analyze-product] Image URL: ${ingredientsImageUrl}`);
-    console.log(`[analyze-product] Product: ${product.name} | Brand: ${product.brand || 'Unknown'} | Barcode: ${barcode}`);
-
-    // Prepare AI prompt with explicit instructions to analyze THIS specific image
-    const systemPrompt = `You are a food health analyst. Your task is to analyze the SPECIFIC ingredient label image provided.
+    // PRIORITY 2: Fallback to AI Vision if OpenFoodFacts failed
+    if (!analysis) {
+      console.log(`[analyze-product] Falling back to AI Vision analysis...`);
+      
+      const ingredientsImageUrl = product.back_image_url || product.front_image_url;
+      
+      if (!ingredientsImageUrl) {
+        console.log(`[analyze-product] No image available for AI analysis`);
+        // Return failed state - no data available
+        analysis = {
+          health_score: 0,
+          analysis_summary: "Could not analyze product. Please flip the pack and rescan the nutrition label.",
+          positive_points: [],
+          negative_points: ["No data available from database or image"],
+          source: "failed"
+        };
+      } else {
+        // AI Vision analysis
+        console.log(`[analyze-product] Analyzing image with AI: ${ingredientsImageUrl}`);
+        
+        const systemPrompt = `You are a food health analyst. Your task is to analyze the SPECIFIC ingredient label image provided.
 
 CRITICAL INSTRUCTIONS:
 - You MUST extract and read the ACTUAL text from THIS specific image using OCR
 - DO NOT provide generic or default scores - analyze the REAL ingredients you see
 - If you cannot read the image clearly, return health_score: 0 and say "Image unreadable" in summary
-- The score MUST reflect the ACTUAL ingredients visible in this image
 
 NUTRITIONAL EXTRACTION PRIORITY:
 - Look specifically for keywords: 'Energy', 'Kcal', 'Calories', 'Sugar', 'Carbohydrate', 'Fat', 'Protein', 'Sodium', 'Fiber'
@@ -102,98 +273,97 @@ RESPOND ONLY with valid JSON:
   "negative_points": ["concern 1", "concern 2"]
 }`;
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+        if (!LOVABLE_API_KEY) {
+          throw new Error("LOVABLE_API_KEY is not configured");
+        }
 
-    // Call Lovable AI Gateway with vision capabilities
-    console.log(`[analyze-product] Sending to Gemini Flash...`);
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `ANALYZE THIS SPECIFIC IMAGE NOW. Extract the ingredients from the image and calculate a health score.
+        try {
+          console.log(`[analyze-product] Sending to Gemini Flash...`);
+          const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: [
+                { role: "system", content: systemPrompt },
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: `ANALYZE THIS SPECIFIC IMAGE NOW. Extract the ingredients from the image and calculate a health score.
 
 Product: ${product.name || "Unknown"}
 Brand: ${product.brand || "Unknown"}
 Barcode: ${barcode}
-Image URL: ${ingredientsImageUrl}
 
 READ THE ACTUAL TEXT IN THIS IMAGE and provide a score based on what you see.`
-              },
-              {
-                type: "image_url",
-                image_url: { url: ingredientsImageUrl }
+                    },
+                    {
+                      type: "image_url",
+                      image_url: { url: ingredientsImageUrl }
+                    }
+                  ]
+                }
+              ],
+            }),
+          });
+
+          console.log(`[analyze-product] Gemini response status: ${aiResponse.status}`);
+
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json();
+            const content = aiData.choices?.[0]?.message?.content;
+
+            if (content) {
+              console.log(`[analyze-product] AI raw response: ${content}`);
+
+              try {
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  const parsed = JSON.parse(jsonMatch[0]);
+                  analysis = {
+                    health_score: Math.max(0, Math.min(100, Math.round(parsed.health_score || 0))),
+                    ingredients_text: parsed.ingredients_text,
+                    analysis_summary: parsed.analysis_summary || "AI analysis completed.",
+                    positive_points: parsed.positive_points || [],
+                    negative_points: parsed.negative_points || [],
+                    source: "ai"
+                  };
+                  console.log(`[analyze-product] AI score: ${analysis.health_score}`);
+                }
+              } catch (parseError) {
+                console.error(`[analyze-product] Failed to parse AI response:`, parseError);
               }
-            ]
+            }
+          } else {
+            const errorText = await aiResponse.text();
+            console.error(`[analyze-product] AI API error: ${aiResponse.status} - ${errorText}`);
           }
-        ],
-      }),
-    });
-    console.log(`[analyze-product] Gemini response status: ${aiResponse.status}`);
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error(`[analyze-product] AI API error: ${aiResponse.status} - ${errorText}`);
-      
-      if (aiResponse.status === 429) {
-        throw new Error("Rate limit exceeded. Please try again later.");
+        } catch (aiError) {
+          console.error(`[analyze-product] AI analysis error:`, aiError);
+        }
       }
-      if (aiResponse.status === 402) {
-        throw new Error("AI credits exhausted. Please add credits to continue.");
-      }
-      throw new Error(`AI analysis failed: ${aiResponse.status}`);
     }
 
-    const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content;
-
-    if (!content) {
-      console.error(`[analyze-product] No content in AI response`);
-      throw new Error("AI returned empty response");
-    }
-
-    console.log(`[analyze-product] AI raw response: ${content}`);
-
-    // Parse the JSON response from AI
-    let analysis: AnalysisResult;
-    try {
-      // Extract JSON from response (handle markdown code blocks)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("No JSON found in response");
-      }
-      analysis = JSON.parse(jsonMatch[0]);
-    } catch (parseError) {
-      console.error(`[analyze-product] Failed to parse AI response: ${parseError}`);
-      // Fallback to default analysis
+    // Final fallback if both methods failed
+    if (!analysis) {
       analysis = {
-        health_score: 50,
-        analysis_summary: "Unable to fully analyze. Manual review recommended.",
-        positive_points: ["Product submitted for review"],
-        negative_points: ["Analysis incomplete - please verify ingredients manually"]
+        health_score: 0,
+        analysis_summary: "Could not analyze product. Please flip the pack and rescan the nutrition label.",
+        positive_points: [],
+        negative_points: ["Analysis failed - try rescanning with clearer image"],
+        source: "failed"
       };
     }
 
-    // Validate and clamp health score
-    analysis.health_score = Math.max(0, Math.min(100, Math.round(analysis.health_score)));
+    console.log(`[analyze-product] Final analysis (source: ${analysis.source}):`, analysis);
 
-    console.log(`[analyze-product] Final analysis:`, analysis);
-
-    // Update product with analysis results and timestamp
-    // Include ingredients_text if AI extracted it (only if not already present)
+    // Update product with analysis results
     const updatePayload: Record<string, unknown> = {
       health_score: analysis.health_score,
       analysis_summary: analysis.analysis_summary,
@@ -203,7 +373,7 @@ READ THE ACTUAL TEXT IN THIS IMAGE and provide a score based on what you see.`
       last_analyzed_at: new Date().toISOString()
     };
 
-    // Only update ingredients_text if AI extracted it and product doesn't have it
+    // Update ingredients_text if we got it and product doesn't have it
     if (analysis.ingredients_text && !product.ingredients_text) {
       updatePayload.ingredients_text = analysis.ingredients_text;
     }
@@ -224,7 +394,8 @@ READ THE ACTUAL TEXT IN THIS IMAGE and provide a score based on what you see.`
       JSON.stringify({ 
         success: true, 
         barcode,
-        analysis 
+        analysis,
+        source: analysis.source
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

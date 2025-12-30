@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, Clock, AlertTriangle, RotateCcw } from "lucide-react";
 import { MemeHeader } from "@/components/product/MemeHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -46,7 +46,7 @@ const getRandomVideo = (videos: string[]) => {
 
 // Get meme based on score
 const getMemeForScore = (score: number | null) => {
-  if (score === null) return null;
+  if (score === null || score === 0) return null;
   if (score < 40) return getRandomVideo(guiltyMemes);
   if (score < 70) return getRandomVideo(confusedMemes);
   return getRandomVideo(victoryMemes);
@@ -87,9 +87,11 @@ const ProductPage = () => {
   const [showSpinner, setShowSpinner] = useState(true);
   const [revealedScore, setRevealedScore] = useState<number | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [dataSource, setDataSource] = useState<string | null>(null);
+  const [analysisFailed, setAnalysisFailed] = useState(false);
   const { toast } = useToast();
   
-  const { data: product, isLoading } = useQuery({
+  const { data: product, isLoading, refetch } = useQuery({
     queryKey: ["product", barcode],
     queryFn: async () => {
       if (!barcode) return null;
@@ -111,25 +113,33 @@ const ProductPage = () => {
     return getMemeForScore(revealedScore);
   }, [revealedScore]);
 
-  // Simple 3-second timeout to force hide spinner
+  // Smart Loading: Check if product already has data (instant OpenFoodFacts result)
   useEffect(() => {
-    if (isAnalyzing || (product && product.health_score === null)) {
-      setShowSpinner(true);
-      const timer = setTimeout(() => {
+    if (product) {
+      // If product already has a valid score, show it immediately (OpenFoodFacts path)
+      if (product.health_score !== null && product.health_score !== undefined) {
+        setRevealedScore(product.health_score);
         setShowSpinner(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    } else {
-      setShowSpinner(false);
+        
+        // Check if it's a failed analysis (score 0 with failed indicators)
+        if (product.health_score === 0 && product.analysis_summary?.includes("Could not analyze")) {
+          setAnalysisFailed(true);
+        }
+        return;
+      }
+      
+      // For new products awaiting analysis, show 3-second spinner then reveal button
+      if (isAnalyzing) {
+        setShowSpinner(true);
+        const timer = setTimeout(() => {
+          setShowSpinner(false);
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [isAnalyzing, product?.health_score]);
-
-  // If product already has a score, use it
-  useEffect(() => {
-    if (product?.health_score !== null && product?.health_score !== undefined) {
-      setRevealedScore(product.health_score);
-    }
-  }, [product?.health_score]);
+    
+    setShowSpinner(false);
+  }, [product, isAnalyzing]);
 
   const handleRevealResult = async () => {
     if (!barcode) return;
@@ -148,7 +158,18 @@ const ProductPage = () => {
 
       if (data?.health_score !== null && data?.health_score !== undefined) {
         setRevealedScore(data.health_score);
-        toast({ title: "Score Ready!", description: `Health Score: ${data.health_score}` });
+        
+        // Check for failed analysis
+        if (data.health_score === 0 && data.analysis_summary?.includes("Could not analyze")) {
+          setAnalysisFailed(true);
+          toast({ 
+            title: "Analysis Failed", 
+            description: "Could not find data. Try rescanning.",
+            variant: "destructive"
+          });
+        } else {
+          toast({ title: "Score Ready!", description: `Health Score: ${data.health_score}` });
+        }
       } else {
         toast({ 
           title: "Still Analyzing...", 
@@ -169,7 +190,7 @@ const ProductPage = () => {
   
   // Show "Tap to Reveal" button when spinner has stopped but no score yet
   const showRevealButton = !showSpinner && revealedScore === null && barcode;
-  const hasScore = revealedScore !== null;
+  const hasScore = revealedScore !== null && revealedScore > 0;
 
   if (isLoading) {
     return (
@@ -262,6 +283,10 @@ const ProductPage = () => {
                 <div className={`w-16 h-16 rounded-full ${getScoreBgColor(revealedScore)} flex items-center justify-center shadow-lg`}>
                   <span className="text-2xl font-bold text-white">{revealedScore}</span>
                 </div>
+              ) : analysisFailed ? (
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                  <AlertTriangle className="w-7 h-7 text-destructive" />
+                </div>
               ) : null}
               
               {/* Last analyzed timestamp */}
@@ -275,8 +300,28 @@ const ProductPage = () => {
           </div>
         </div>
 
+        {/* Analysis Failed - Help Card */}
+        {analysisFailed && (
+          <div className="mt-5 bg-destructive/10 rounded-2xl p-6 border border-destructive/30 shadow-soft text-center animate-fade-up">
+            <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
+              <RotateCcw className="w-8 h-8 text-destructive" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">Could Not Find Data</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              🔄 Flip the pack and rescan the Nutrition Table for better results.
+            </p>
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center gap-2 w-full py-4 bg-primary text-primary-foreground font-bold text-lg rounded-xl hover:opacity-90 transition-opacity"
+            >
+              <RotateCcw className="w-5 h-5" />
+              Rescan Product
+            </Link>
+          </div>
+        )}
+
         {/* Tap to Reveal Button */}
-        {showRevealButton && (
+        {showRevealButton && !analysisFailed && (
           <div className="mt-5 bg-card rounded-2xl p-6 border border-border/50 shadow-soft text-center animate-fade-up">
             <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
               <Sparkles className="w-8 h-8 text-green-500" />
@@ -304,7 +349,7 @@ const ProductPage = () => {
           </div>
         )}
 
-        {/* Ingredients List - Expands when no nutrition data */}
+        {/* Ingredients List */}
         {hasScore && (
           <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-100">
             <div className="flex items-center gap-2 mb-3">
@@ -342,6 +387,14 @@ const ProductPage = () => {
             ) : (
               <p className="text-muted-foreground text-sm">No ingredients detected.</p>
             )}
+          </div>
+        )}
+
+        {/* Analysis Summary */}
+        {hasScore && product?.analysis_summary && (
+          <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-200">
+            <h3 className="font-semibold text-foreground mb-2">Summary</h3>
+            <p className="text-muted-foreground text-sm">{product.analysis_summary}</p>
           </div>
         )}
       </div>
