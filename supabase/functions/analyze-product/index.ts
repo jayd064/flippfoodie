@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface AnalysisResult {
   health_score: number;
+  ingredients_text?: string;
   analysis_summary: string;
   positive_points: string[];
   negative_points: string[];
@@ -69,11 +70,16 @@ serve(async (req) => {
 CRITICAL INSTRUCTIONS:
 - You MUST extract and read the ACTUAL text from THIS specific image using OCR
 - DO NOT provide generic or default scores - analyze the REAL ingredients you see
-- If you cannot read the image clearly, say so in the summary
+- If you cannot read the image clearly, return health_score: 0 and say "Image unreadable" in summary
 - The score MUST reflect the ACTUAL ingredients visible in this image
 
+NUTRITIONAL EXTRACTION PRIORITY:
+- Look specifically for keywords: 'Energy', 'Kcal', 'Calories', 'Sugar', 'Carbohydrate', 'Fat', 'Protein', 'Sodium', 'Fiber'
+- Extract exact values with units (e.g., "180 kcal", "25g sugar")
+- If the nutritional table is blurry, focus on extracting ingredients_text accurately instead
+
 Analysis Steps:
-1. OCR: Extract ALL ingredient text visible in this image
+1. OCR: Extract ALL ingredient text visible in this image - this is the PRIORITY
 2. Identify: Harmful additives, preservatives, artificial colors, chemicals
 3. Check: Sugar content, palm oil, trans fats, processed ingredients
 4. Calculate Health Score (0-100):
@@ -89,7 +95,8 @@ Analysis Steps:
 
 RESPOND ONLY with valid JSON:
 {
-  "health_score": <number 0-100 based on ACTUAL ingredients>,
+  "health_score": <number 0-100 based on ACTUAL ingredients, or 0 if unreadable>,
+  "ingredients_text": "<comma-separated list of ALL ingredients extracted from the image>",
   "analysis_summary": "<summary of THIS product>",
   "positive_points": ["point 1", "point 2"],
   "negative_points": ["concern 1", "concern 2"]
@@ -186,16 +193,24 @@ READ THE ACTUAL TEXT IN THIS IMAGE and provide a score based on what you see.`
     console.log(`[analyze-product] Final analysis:`, analysis);
 
     // Update product with analysis results and timestamp
+    // Include ingredients_text if AI extracted it (only if not already present)
+    const updatePayload: Record<string, unknown> = {
+      health_score: analysis.health_score,
+      analysis_summary: analysis.analysis_summary,
+      positive_points: analysis.positive_points,
+      negative_points: analysis.negative_points,
+      updated_at: new Date().toISOString(),
+      last_analyzed_at: new Date().toISOString()
+    };
+
+    // Only update ingredients_text if AI extracted it and product doesn't have it
+    if (analysis.ingredients_text && !product.ingredients_text) {
+      updatePayload.ingredients_text = analysis.ingredients_text;
+    }
+
     const { error: updateError } = await supabase
       .from("products")
-      .update({
-        health_score: analysis.health_score,
-        analysis_summary: analysis.analysis_summary,
-        positive_points: analysis.positive_points,
-        negative_points: analysis.negative_points,
-        updated_at: new Date().toISOString(),
-        last_analyzed_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq("barcode", barcode);
 
     if (updateError) {

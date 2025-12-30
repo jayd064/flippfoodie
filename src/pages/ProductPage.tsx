@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, Clock, AlertTriangle } from "lucide-react";
+import { MemeHeader } from "@/components/product/MemeHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -212,23 +213,13 @@ const ProductPage = () => {
 
       {/* Header - Video Player when score revealed, Image otherwise */}
       <div className={`relative h-56 ${showSpinner ? 'mt-12' : ''}`}>
-        {hasScore && memeVideo ? (
-          <video
-            src={memeVideo}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <img
-            src={imageUrl}
-            alt={productName}
-            className="w-full h-full object-cover"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+        <MemeHeader
+          videoUrl={memeVideo || ""}
+          fallbackImageUrl={imageUrl}
+          productName={productName}
+          isRevealed={hasScore && !!memeVideo}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent pointer-events-none" />
         
         {/* Navigation */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-12">
@@ -313,7 +304,7 @@ const ProductPage = () => {
           </div>
         )}
 
-        {/* Real Ingredients with Roasts - Only show when score is revealed */}
+        {/* Ingredients List - Expands when no nutrition data */}
         {hasScore && (
           <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-100">
             <div className="flex items-center gap-2 mb-3">
@@ -351,36 +342,6 @@ const ProductPage = () => {
             ) : (
               <p className="text-muted-foreground text-sm">No ingredients detected.</p>
             )}
-          </div>
-        )}
-
-        {/* Nutritional Overview - Only show when score is revealed */}
-        {hasScore && (
-          <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-300">
-            <h3 className="font-semibold text-foreground mb-4">Nutritional Facts</h3>
-            <div className="space-y-3">
-              {[
-                { label: "Calories", value: "180 kcal", bar: 35 },
-                { label: "Sugar", value: "25g", bar: 85 },
-                { label: "Fat", value: "8g", bar: 45 },
-                { label: "Fiber", value: "2g", bar: 15 },
-              ].map((item) => (
-                <div key={item.label}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-muted-foreground">{item.label}</span>
-                    <span className="font-medium text-foreground">{item.value}</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        item.bar > 70 ? "bg-score-bad" : item.bar > 40 ? "bg-score-medium" : "bg-score-good"
-                      }`}
-                      style={{ width: `${item.bar}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </div>
