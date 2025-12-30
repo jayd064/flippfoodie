@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw, Clock, Bug, AlertCircle } from "lucide-react";
+import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw, Clock, AlertCircle } from "lucide-react";
 import { HealthScore } from "@/components/product/HealthScore";
 import { IngredientAlert } from "@/components/product/IngredientAlert";
 import { BetterAlternative } from "@/components/product/BetterAlternative";
@@ -63,17 +63,12 @@ const ProductPage = () => {
   const [searchParams] = useSearchParams();
   const isAnalyzing = searchParams.get("analyzing") === "true";
   const [isRetrying, setIsRetrying] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [analysisTimedOut, setAnalysisTimedOut] = useState(false);
+  const [localHealthScore, setLocalHealthScore] = useState<number | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
-  const addLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
-  };
   
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", barcode],
@@ -90,109 +85,104 @@ const ProductPage = () => {
       return data;
     },
     enabled: !!barcode,
-    refetchInterval: (query) => {
-      // Auto-refetch every 3 seconds while analyzing (faster polling)
-      if (query.state.data?.health_score === null) {
-        return 3000;
-      }
-      return false;
-    },
   });
 
-  // 15-second timeout fallback - clear analyzing state if it takes too long
+  // Polling fallback: Check every 2 seconds if health_score is null
   useEffect(() => {
-    if (isAnalyzing || (product && product.health_score === null)) {
-      setAnalysisTimedOut(false);
-      
-      // Set 15 second timeout
-      timeoutRef.current = setTimeout(() => {
-        addLog("TIMEOUT: Analysis exceeded 15 seconds");
-        setAnalysisTimedOut(true);
-        setIsRetrying(false);
-        toast({
-          title: "Analysis Taking Long",
-          description: "Click Retry to try again.",
-        });
-      }, 15000);
-    }
-    
-    // Clear timeout when score arrives
-    if (product?.health_score !== null && product?.health_score !== undefined) {
+    // Clear any existing intervals
+    const cleanup = () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+    };
+
+    // If we already have a score, no need to poll
+    if (product?.health_score !== null && product?.health_score !== undefined) {
+      setLocalHealthScore(product.health_score);
       setAnalysisTimedOut(false);
       setIsRetrying(false);
+      cleanup();
+      return;
+    }
+
+    // Start polling if health_score is null
+    if (barcode && (isAnalyzing || (product && product.health_score === null))) {
+      setAnalysisTimedOut(false);
+      
+      // Start 2-second polling
+      pollingRef.current = setInterval(async () => {
+        try {
+          const { data, error } = await supabase
+            .from("products")
+            .select("health_score")
+            .eq("barcode", barcode)
+            .maybeSingle();
+          
+          if (!error && data?.health_score !== null && data?.health_score !== undefined) {
+            // Found a score! Update state and stop polling
+            setLocalHealthScore(data.health_score);
+            setIsRetrying(false);
+            setAnalysisTimedOut(false);
+            cleanup();
+            // Refetch full product data
+            queryClient.invalidateQueries({ queryKey: ["product", barcode] });
+          }
+        } catch (e) {
+          console.error("Polling error:", e);
+        }
+      }, 2000);
+
+      // 15-second timeout
+      timeoutRef.current = setTimeout(() => {
+        setAnalysisTimedOut(true);
+        setIsRetrying(false);
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        toast({
+          title: "Analysis Taking Long",
+          description: "Tap Retry to try again.",
+        });
+      }, 15000);
     }
     
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [isAnalyzing, product?.health_score, toast]);
+    return cleanup;
+  }, [barcode, isAnalyzing, product?.health_score, queryClient, toast]);
 
   const handleRetryAnalysis = async () => {
     if (!barcode) return;
     
-    setDebugLogs([]);
     setAnalysisTimedOut(false);
-    addLog("Step 1: Button Clicked");
-    
     setIsRetrying(true);
     
-    // Start 15-second timeout for this retry
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => {
-      addLog("TIMEOUT: Retry exceeded 15 seconds");
-      setAnalysisTimedOut(true);
-      setIsRetrying(false);
-    }, 15000);
-    
     try {
-      addLog("Step 2: Invoking Analyze Function...");
-      
-      const { data, error } = await supabase.functions.invoke("analyze-product", {
+      const { error } = await supabase.functions.invoke("analyze-product", {
         body: { barcode },
       });
       
-      if (error) {
-        addLog(`Step 3: ERROR - ${error.message}`);
-        throw error;
-      }
-      
-      addLog(`Step 3: SUCCESS - Score: ${data?.analysis?.health_score ?? 'N/A'}`);
+      if (error) throw error;
       
       toast({
         title: "Analysis Started",
-        description: "AI is re-analyzing the product. Results will appear shortly.",
+        description: "Results will appear automatically.",
       });
-      
-      // Refetch product data after a short delay
-      addLog("Step 4: Reloading Database...");
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await queryClient.invalidateQueries({ queryKey: ["product", barcode] });
-      addLog("Step 5: Database Reloaded!");
       
     } catch (error: any) {
       console.error("Retry analysis error:", error);
-      addLog(`ERROR: ${error?.message || 'Unknown error'}`);
       toast({
         title: "Analysis Failed",
         description: "Could not start analysis. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      // FORCE UI UPDATE: Always stop spinner in finally block
       setIsRetrying(false);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
     }
+    // Note: isRetrying will be set to false by the polling effect when score arrives
   };
 
   // Use mock data when no barcode (for demo purposes)
@@ -404,34 +394,6 @@ const ProductPage = () => {
           </div>
         )}
 
-        {/* Hidden Debug Toggle */}
-        <div className="mt-8 text-center">
-          <button 
-            onClick={() => setShowDebug(!showDebug)}
-            className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors inline-flex items-center gap-1"
-          >
-            <Bug className="w-3 h-3" />
-            {showDebug ? "Hide Debug" : "Debug"}
-          </button>
-        </div>
-
-        {/* Debug Panel (Hidden by Default) */}
-        {showDebug && (
-          <div className="mt-2 bg-muted/50 rounded-xl p-4 border border-border animate-fade-up">
-            <h4 className="font-semibold text-foreground mb-2 text-sm">🔧 System Logs</h4>
-            <div className="bg-background rounded-lg p-3 max-h-40 overflow-y-auto font-mono text-xs space-y-1">
-              {debugLogs.length === 0 ? (
-                <p className="text-muted-foreground">Click "Refresh" to see debug logs...</p>
-              ) : (
-                debugLogs.map((log, i) => (
-                  <p key={i} className={log.includes('ERROR') ? 'text-destructive' : log.includes('SUCCESS') ? 'text-green-600' : 'text-foreground'}>
-                    {log}
-                  </p>
-                ))
-              )}
-            </div>
-          </div>
-        )}
 
       </div>
     </div>
