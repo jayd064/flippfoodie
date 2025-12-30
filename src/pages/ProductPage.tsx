@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw, Clock, Bug } from "lucide-react";
+import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw, Clock, Bug, AlertCircle } from "lucide-react";
 import { HealthScore } from "@/components/product/HealthScore";
 import { IngredientAlert } from "@/components/product/IngredientAlert";
 import { BetterAlternative } from "@/components/product/BetterAlternative";
@@ -65,6 +65,8 @@ const ProductPage = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [analysisTimedOut, setAnalysisTimedOut] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -97,13 +99,59 @@ const ProductPage = () => {
     },
   });
 
+  // 15-second timeout fallback - clear analyzing state if it takes too long
+  useEffect(() => {
+    if (isAnalyzing || (product && product.health_score === null)) {
+      setAnalysisTimedOut(false);
+      
+      // Set 15 second timeout
+      timeoutRef.current = setTimeout(() => {
+        addLog("TIMEOUT: Analysis exceeded 15 seconds");
+        setAnalysisTimedOut(true);
+        setIsRetrying(false);
+        toast({
+          title: "Analysis Taking Long",
+          description: "Click Retry to try again.",
+        });
+      }, 15000);
+    }
+    
+    // Clear timeout when score arrives
+    if (product?.health_score !== null && product?.health_score !== undefined) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setAnalysisTimedOut(false);
+      setIsRetrying(false);
+    }
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isAnalyzing, product?.health_score, toast]);
+
   const handleRetryAnalysis = async () => {
     if (!barcode) return;
     
     setDebugLogs([]);
+    setAnalysisTimedOut(false);
     addLog("Step 1: Button Clicked");
     
     setIsRetrying(true);
+    
+    // Start 15-second timeout for this retry
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      addLog("TIMEOUT: Retry exceeded 15 seconds");
+      setAnalysisTimedOut(true);
+      setIsRetrying(false);
+    }, 15000);
+    
     try {
       addLog("Step 2: Invoking Analyze Function...");
       
@@ -125,10 +173,10 @@ const ProductPage = () => {
       
       // Refetch product data after a short delay
       addLog("Step 4: Reloading Database...");
-      setTimeout(async () => {
-        await queryClient.invalidateQueries({ queryKey: ["product", barcode] });
-        addLog("Step 5: Database Reloaded!");
-      }, 3000);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      await queryClient.invalidateQueries({ queryKey: ["product", barcode] });
+      addLog("Step 5: Database Reloaded!");
+      
     } catch (error: any) {
       console.error("Retry analysis error:", error);
       addLog(`ERROR: ${error?.message || 'Unknown error'}`);
@@ -138,7 +186,12 @@ const ProductPage = () => {
         variant: "destructive",
       });
     } finally {
+      // FORCE UI UPDATE: Always stop spinner in finally block
       setIsRetrying(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     }
   };
 
@@ -146,8 +199,8 @@ const ProductPage = () => {
   const displayProduct = barcode ? product : mockProduct;
   const ingredients = parseIngredients(displayProduct?.ingredients_text || (barcode ? null : mockProduct.ingredients_text));
   
-  // Check if AI is still analyzing (no health score yet)
-  const showAnalyzingBanner = isAnalyzing || (product && product.health_score === null);
+  // Check if AI is still analyzing (no health score yet) - but respect timeout
+  const showAnalyzingBanner = !analysisTimedOut && (isAnalyzing || (product && product.health_score === null));
 
   if (isLoading) {
     return (
@@ -309,6 +362,27 @@ const ProductPage = () => {
           </div>
         )}
 
+        {/* Timeout/Retry State - Shows when analysis exceeded 15 seconds */}
+        {analysisTimedOut && product?.health_score === null && (
+          <div className="mt-5 bg-card rounded-2xl p-6 border border-destructive/30 shadow-soft text-center">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">Analysis Timed Out</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              The analysis is taking longer than expected. Tap below to retry.
+            </p>
+            <button
+              onClick={handleRetryAnalysis}
+              disabled={isRetrying}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+              {isRetrying ? "Retrying..." : "Retry Analysis"}
+            </button>
+          </div>
+        )}
+
         {/* Analyzing State Content */}
         {showAnalyzingBanner && (
           <div className="mt-5 bg-card rounded-2xl p-6 border border-border/50 shadow-soft text-center">
@@ -317,7 +391,7 @@ const ProductPage = () => {
             </div>
             <h3 className="font-semibold text-foreground mb-2">Analyzing Ingredients</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Our AI is reading the ingredients label and calculating the health score. This usually takes a few minutes.
+              Our AI is reading the ingredients label and calculating the health score. This usually takes a few seconds.
             </p>
             <button
               onClick={handleRetryAnalysis}

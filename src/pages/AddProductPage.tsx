@@ -86,6 +86,23 @@ const AddProductPage = () => {
     fetchFromOpenFoodFacts();
   }, [barcode, toast]);
 
+  // AGGRESSIVE CAMERA CLEANUP - Stop all video tracks immediately
+  const stopAllCameraTracks = () => {
+    try {
+      // Get all active video streams and stop them
+      navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+        stream.getTracks().forEach(track => {
+          track.stop();
+          console.log("[AddProductPage] Camera track stopped:", track.label);
+        });
+      }).catch(() => {
+        // Ignore - camera may not be active
+      });
+    } catch (e) {
+      console.log("[AddProductPage] Camera cleanup skipped:", e);
+    }
+  };
+
   const handleImageChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     setImage: (file: File | null) => void,
@@ -94,6 +111,9 @@ const AddProductPage = () => {
   ) => {
     const file = e.target.files?.[0];
     if (file) {
+      // AGGRESSIVE CLEANUP: Kill camera immediately after image capture
+      stopAllCameraTracks();
+      
       setImage(file);
       if (clearApiImage) {
         setApiFrontImageUrl(null);
