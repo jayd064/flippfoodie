@@ -96,18 +96,18 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
         const scanner = new Html5Qrcode("barcode-scanner");
         scannerRef.current = scanner;
 
-        // HD resolution config for better focus on iPad
+        // 720p resolution for mobile optimization
         await scanner.start(
           { facingMode: "environment" },
           {
-            fps: 10, // ~100ms between scans (faster scanning)
+            fps: 10,
             qrbox: { width: 280, height: 120 },
             aspectRatio: 1.0,
             disableFlip: false,
             videoConstraints: {
               facingMode: "environment",
-              width: { min: 1280, ideal: 1920 },
-              height: { min: 720, ideal: 1080 },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
             }
           },
           handleSuccessfulScan,
