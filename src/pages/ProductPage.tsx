@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, RefreshCw, Clock, AlertCircle } from "lucide-react";
-import { HealthScore } from "@/components/product/HealthScore";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, Clock } from "lucide-react";
 import { IngredientAlert } from "@/components/product/IngredientAlert";
 import { BetterAlternative } from "@/components/product/BetterAlternative";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,12 +45,6 @@ const parseIngredients = (ingredientsText: string | null) => {
 };
 
 // Get score color based on value
-const getScoreColor = (score: number) => {
-  if (score < 40) return "text-red-500";
-  if (score <= 70) return "text-yellow-500";
-  return "text-green-500";
-};
-
 const getScoreBgColor = (score: number) => {
   if (score < 40) return "bg-red-500";
   if (score <= 70) return "bg-yellow-500";
@@ -62,12 +55,9 @@ const ProductPage = () => {
   const { barcode } = useParams<{ barcode: string }>();
   const [searchParams] = useSearchParams();
   const isAnalyzing = searchParams.get("analyzing") === "true";
-  const [isRetrying, setIsRetrying] = useState(false);
-  const [analysisTimedOut, setAnalysisTimedOut] = useState(false);
-  const [localHealthScore, setLocalHealthScore] = useState<number | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const queryClient = useQueryClient();
+  const [showSpinner, setShowSpinner] = useState(true);
+  const [revealedScore, setRevealedScore] = useState<number | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
   const { toast } = useToast();
   
   const { data: product, isLoading } = useQuery({
@@ -87,110 +77,66 @@ const ProductPage = () => {
     enabled: !!barcode,
   });
 
-  // Polling fallback: Check every 2 seconds if health_score is null
+  // Simple 3-second timeout to force hide spinner
   useEffect(() => {
-    // Clear any existing intervals
-    const cleanup = () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    };
+    if (isAnalyzing || (product && product.health_score === null)) {
+      setShowSpinner(true);
+      const timer = setTimeout(() => {
+        setShowSpinner(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowSpinner(false);
+    }
+  }, [isAnalyzing, product?.health_score]);
 
-    // If we already have a score, no need to poll
+  // If product already has a score, use it
+  useEffect(() => {
     if (product?.health_score !== null && product?.health_score !== undefined) {
-      setLocalHealthScore(product.health_score);
-      setAnalysisTimedOut(false);
-      setIsRetrying(false);
-      cleanup();
-      return;
+      setRevealedScore(product.health_score);
     }
+  }, [product?.health_score]);
 
-    // Start polling if health_score is null
-    if (barcode && (isAnalyzing || (product && product.health_score === null))) {
-      setAnalysisTimedOut(false);
-      
-      // Start 2-second polling
-      pollingRef.current = setInterval(async () => {
-        try {
-          const { data, error } = await supabase
-            .from("products")
-            .select("health_score")
-            .eq("barcode", barcode)
-            .maybeSingle();
-          
-          if (!error && data?.health_score !== null && data?.health_score !== undefined) {
-            // Found a score! Update state and stop polling
-            setLocalHealthScore(data.health_score);
-            setIsRetrying(false);
-            setAnalysisTimedOut(false);
-            cleanup();
-            // Refetch full product data
-            queryClient.invalidateQueries({ queryKey: ["product", barcode] });
-          }
-        } catch (e) {
-          console.error("Polling error:", e);
-        }
-      }, 2000);
-
-      // 15-second timeout
-      timeoutRef.current = setTimeout(() => {
-        setAnalysisTimedOut(true);
-        setIsRetrying(false);
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-        }
-        toast({
-          title: "Analysis Taking Long",
-          description: "Tap Retry to try again.",
-        });
-      }, 15000);
-    }
-    
-    return cleanup;
-  }, [barcode, isAnalyzing, product?.health_score, queryClient, toast]);
-
-  const handleRetryAnalysis = async () => {
+  const handleRevealResult = async () => {
     if (!barcode) return;
     
-    setAnalysisTimedOut(false);
-    setIsRetrying(true);
-    
+    setIsFetching(true);
+    toast({ title: "Fetching...", description: "Getting your results." });
+
     try {
-      const { error } = await supabase.functions.invoke("analyze-product", {
-        body: { barcode },
-      });
-      
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("barcode", barcode)
+        .maybeSingle();
+
       if (error) throw error;
-      
-      toast({
-        title: "Analysis Started",
-        description: "Results will appear automatically.",
-      });
-      
-    } catch (error: any) {
-      console.error("Retry analysis error:", error);
-      toast({
-        title: "Analysis Failed",
-        description: "Could not start analysis. Please try again.",
-        variant: "destructive",
-      });
-      setIsRetrying(false);
+
+      if (data?.health_score !== null && data?.health_score !== undefined) {
+        setRevealedScore(data.health_score);
+        toast({ title: "Score Ready!", description: `Health Score: ${data.health_score}` });
+      } else {
+        toast({ 
+          title: "Still Analyzing...", 
+          description: "Analysis in progress. Try again in 5 seconds.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
+      toast({ title: "Error", description: "Could not fetch results.", variant: "destructive" });
+    } finally {
+      setIsFetching(false);
     }
-    // Note: isRetrying will be set to false by the polling effect when score arrives
   };
 
   // Use mock data when no barcode (for demo purposes)
   const displayProduct = barcode ? product : mockProduct;
   const ingredients = parseIngredients(displayProduct?.ingredients_text || (barcode ? null : mockProduct.ingredients_text));
   
-  // Check if AI is still analyzing (no health score yet) - but respect timeout
-  const showAnalyzingBanner = !analysisTimedOut && (isAnalyzing || (product && product.health_score === null));
+  // Show "Tap to Reveal" button when spinner has stopped but no score yet
+  const showRevealButton = !showSpinner && revealedScore === null && barcode;
+  const hasScore = revealedScore !== null;
 
   if (isLoading) {
     return (
@@ -219,22 +165,22 @@ const ProductPage = () => {
   const imageUrl = displayProduct?.front_image_url || mockProduct.front_image_url;
   const productName = displayProduct?.name || mockProduct.name;
   const productBrand = displayProduct?.brand || mockProduct.brand;
-  const score = displayProduct?.health_score ?? mockProduct.health_score;
+  const score = hasScore ? revealedScore : (displayProduct?.health_score ?? mockProduct.health_score);
 
   return (
     <div className="min-h-screen pb-8">
-      {/* AI Analyzing Banner */}
-      {showAnalyzingBanner && (
+      {/* Spinner Banner - Shows for exactly 3 seconds */}
+      {showSpinner && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-3 px-4">
           <div className="flex items-center justify-center gap-2 animate-pulse">
             <Sparkles className="w-5 h-5" />
-            <span className="text-sm font-medium">AI is Analyzing Label... Check back soon</span>
+            <span className="text-sm font-medium">AI is Analyzing Label...</span>
           </div>
         </div>
       )}
 
       {/* Header Image */}
-      <div className={`relative h-56 ${showAnalyzingBanner ? 'mt-12' : ''}`}>
+      <div className={`relative h-56 ${showSpinner ? 'mt-12' : ''}`}>
         <img
           src={imageUrl}
           alt={productName}
@@ -274,31 +220,19 @@ const ProductPage = () => {
               </h1>
             </div>
             <div className="flex flex-col items-end gap-1">
-              <div className="flex items-center gap-2">
-                {/* Health Score or Loading indicator */}
-                {showAnalyzingBanner ? (
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                    <Loader2 className="w-7 h-7 text-primary animate-spin" />
-                  </div>
-                ) : score !== null ? (
-                  <div className={`w-16 h-16 rounded-full ${getScoreBgColor(score)} flex items-center justify-center shadow-lg`}>
-                    <span className="text-2xl font-bold text-white">{score}</span>
-                  </div>
-                ) : null}
-                
-                {/* Always show refresh button */}
-                <button
-                  onClick={handleRetryAnalysis}
-                  disabled={isRetrying}
-                  className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-50"
-                  title={showAnalyzingBanner ? "Retry Analysis" : "Refresh Score"}
-                >
-                  <RefreshCw className={`w-5 h-5 text-primary ${isRetrying ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
+              {/* Health Score or Spinner */}
+              {showSpinner ? (
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                  <Loader2 className="w-7 h-7 text-primary animate-spin" />
+                </div>
+              ) : hasScore && score !== null ? (
+                <div className={`w-16 h-16 rounded-full ${getScoreBgColor(score)} flex items-center justify-center shadow-lg`}>
+                  <span className="text-2xl font-bold text-white">{score}</span>
+                </div>
+              ) : null}
               
               {/* Last analyzed timestamp */}
-              {product?.last_analyzed_at && !showAnalyzingBanner && (
+              {product?.last_analyzed_at && hasScore && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="w-3 h-3" />
                   <span>Updated: {format(new Date(product.last_analyzed_at), "h:mm a")}</span>
@@ -308,22 +242,51 @@ const ProductPage = () => {
           </div>
         </div>
 
-        {/* Ingredient Alerts */}
-        {!showAnalyzingBanner && ingredients.length > 0 && (
+        {/* Tap to Reveal Button */}
+        {showRevealButton && (
+          <div className="mt-5 bg-card rounded-2xl p-6 border border-border/50 shadow-soft text-center animate-fade-up">
+            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-8 h-8 text-green-500" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">Analysis Complete!</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Tap the button below to see your result.
+            </p>
+            <button
+              onClick={handleRevealResult}
+              disabled={isFetching}
+              className="w-full py-4 bg-green-500 text-white font-bold text-lg rounded-xl hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isFetching ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Fetching...
+                </>
+              ) : (
+                <>
+                  ✨ Tap to View Result
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Ingredient Alerts - Only show when score is revealed */}
+        {hasScore && ingredients.length > 0 && (
           <div className="mt-5">
             <IngredientAlert ingredients={ingredients} />
           </div>
         )}
 
-        {/* Better Alternative */}
-        {!showAnalyzingBanner && (
+        {/* Better Alternative - Only show when score is revealed */}
+        {hasScore && (
           <div className="mt-5">
             <BetterAlternative product={mockAlternative} />
           </div>
         )}
 
-        {/* Nutritional Overview */}
-        {!showAnalyzingBanner && (
+        {/* Nutritional Overview - Only show when score is revealed */}
+        {hasScore && (
           <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-300">
             <h3 className="font-semibold text-foreground mb-4">Nutritional Facts</h3>
             <div className="space-y-3">
@@ -351,50 +314,6 @@ const ProductPage = () => {
             </div>
           </div>
         )}
-
-        {/* Timeout/Retry State - Shows when analysis exceeded 15 seconds */}
-        {analysisTimedOut && product?.health_score === null && (
-          <div className="mt-5 bg-card rounded-2xl p-6 border border-destructive/30 shadow-soft text-center">
-            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-8 h-8 text-destructive" />
-            </div>
-            <h3 className="font-semibold text-foreground mb-2">Analysis Timed Out</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              The analysis is taking longer than expected. Tap below to retry.
-            </p>
-            <button
-              onClick={handleRetryAnalysis}
-              disabled={isRetrying}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
-              {isRetrying ? "Retrying..." : "Retry Analysis"}
-            </button>
-          </div>
-        )}
-
-        {/* Analyzing State Content */}
-        {showAnalyzingBanner && (
-          <div className="mt-5 bg-card rounded-2xl p-6 border border-border/50 shadow-soft text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-8 h-8 text-primary" />
-            </div>
-            <h3 className="font-semibold text-foreground mb-2">Analyzing Ingredients</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Our AI is reading the ingredients label and calculating the health score. This usually takes a few seconds.
-            </p>
-            <button
-              onClick={handleRetryAnalysis}
-              disabled={isRetrying}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
-              {isRetrying ? "Retrying..." : "Retry Analysis"}
-            </button>
-          </div>
-        )}
-
-
       </div>
     </div>
   );
