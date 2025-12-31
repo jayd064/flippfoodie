@@ -75,8 +75,8 @@ export const TikTokHeader = ({
 
   return (
     <div className="relative w-full">
-      {/* Meme Header - 40vh cover area */}
-      <div className={`relative w-full h-[40vh] overflow-hidden ${getPatternGradient(score)}`}>
+      {/* Meme Header - 35vh cover area */}
+      <div className={`relative w-full h-[35vh] overflow-hidden ${getPatternGradient(score)}`}>
         {/* Pattern overlay for visual interest when no video */}
         <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0" style={{

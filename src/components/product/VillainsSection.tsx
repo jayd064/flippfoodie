@@ -5,38 +5,49 @@ interface VillainsSectionProps {
   isLoading?: boolean;
 }
 
-// Keywords to detect as "villains"
-const VILLAIN_KEYWORDS = [
-  "sugar",
-  "palm oil",
-  "maida",
-  "refined flour",
-  "maltodextrin",
-  "high fructose",
-  "high fructose corn syrup",
-  "corn syrup",
-  "hydrogenated",
-  "artificial",
-  "preservative",
-  "sodium",
-];
+// Villain keywords with witty roasts
+const VILLAIN_ROASTS: Record<string, { emoji: string; roast: string }> = {
+  "sugar": { emoji: "☠️", roast: "Sweet but toxic" },
+  "palm oil": { emoji: "💔", roast: "Heart attack helper" },
+  "maida": { emoji: "🤢", roast: "Glue for your gut" },
+  "refined flour": { emoji: "🤢", roast: "Nutritionally dead" },
+  "maltodextrin": { emoji: "📈", roast: "Blood sugar spike" },
+  "high fructose": { emoji: "🍬", roast: "Liquid diabetes" },
+  "high fructose corn syrup": { emoji: "🍬", roast: "Liquid diabetes" },
+  "corn syrup": { emoji: "🍬", roast: "Sneaky sugar" },
+  "hydrogenated": { emoji: "🧪", roast: "Frankenstein fat" },
+  "artificial": { emoji: "🤖", roast: "Lab-made mystery" },
+  "preservative": { emoji: "🧟", roast: "Zombie ingredient" },
+  "sodium": { emoji: "🧂", roast: "Salt bomb alert" },
+};
 
-// Extract villains from ingredients text
-const extractVillains = (ingredientsText: string): string[] => {
+interface Villain {
+  name: string;
+  emoji: string;
+  roast: string;
+}
+
+// Extract villains from ingredients text with roasts
+const extractVillains = (ingredientsText: string): Villain[] => {
   const lowerText = ingredientsText.toLowerCase();
-  const foundVillains: string[] = [];
+  const foundVillains: Villain[] = [];
+  const addedKeywords = new Set<string>();
 
-  VILLAIN_KEYWORDS.forEach((keyword) => {
-    if (lowerText.includes(keyword)) {
-      // Capitalize first letter of each word for display
-      const displayName = keyword
-        .split(" ")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
-      
+  Object.entries(VILLAIN_ROASTS).forEach(([keyword, { emoji, roast }]) => {
+    if (lowerText.includes(keyword) && !addedKeywords.has(keyword)) {
       // Avoid duplicates (e.g., "high fructose" and "high fructose corn syrup")
-      if (!foundVillains.some((v) => v.toLowerCase().includes(keyword) || keyword.includes(v.toLowerCase()))) {
-        foundVillains.push(displayName);
+      const isSubstring = Array.from(addedKeywords).some(
+        (added) => added.includes(keyword) || keyword.includes(added)
+      );
+      
+      if (!isSubstring) {
+        const displayName = keyword
+          .split(" ")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+        
+        foundVillains.push({ name: displayName, emoji, roast });
+        addedKeywords.add(keyword);
       }
     }
   });
@@ -99,14 +110,18 @@ export const VillainsSection = ({ ingredientsText, isLoading = false }: Villains
           No harmful ingredients detected! This looks clean.
         </p>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="space-y-2">
           {villains.map((villain, index) => (
-            <span
+            <div
               key={index}
-              className="px-3 py-1.5 bg-destructive/10 text-destructive border border-destructive/30 rounded-full text-sm font-semibold"
+              className="flex items-center gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-xl"
             >
-              🚨 {villain}
-            </span>
+              <span className="text-xl">{villain.emoji}</span>
+              <div>
+                <p className="font-bold text-destructive text-sm">{villain.name}</p>
+                <p className="text-xs text-destructive/80">{villain.roast}</p>
+              </div>
+            </div>
           ))}
         </div>
       )}
