@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, Clock, RotateCcw } from "lucide-react";
+import { ArrowLeft, Share2, Loader2, Sparkles, Clock, RotateCcw } from "lucide-react";
 import { TikTokHeader } from "@/components/product/TikTokHeader";
 import { VillainsSection } from "@/components/product/VillainsSection";
 import { supabase } from "@/integrations/supabase/client";
@@ -243,14 +243,23 @@ const ProductPage = () => {
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </Link>
           
-          <div className="flex gap-2">
-            <button className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors">
-              <Share2 className="w-5 h-5 text-foreground" />
-            </button>
-            <button className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors">
-              <Bookmark className="w-5 h-5 text-foreground" />
-            </button>
-          </div>
+          <button 
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: productName,
+                  text: `Check out this product I scanned on FlippFoodie! Score: ${revealedScore ?? "Pending"}`,
+                  url: window.location.href,
+                });
+              } else {
+                toast({ title: "Copied!", description: "Link copied to clipboard." });
+                navigator.clipboard.writeText(window.location.href);
+              }
+            }}
+            className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors"
+          >
+            <Share2 className="w-5 h-5 text-foreground" />
+          </button>
         </div>
       </div>
 
