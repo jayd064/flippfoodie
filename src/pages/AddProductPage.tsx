@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { compressImage, blobToFile } from "@/lib/imageCompression";
 
 interface OpenFoodFactsProduct {
   product_name?: string;
@@ -127,13 +128,24 @@ const AddProductPage = () => {
   };
 
   const uploadImage = async (file: File, type: "front" | "back"): Promise<string | null> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${barcode}_${type}_${Date.now()}.${fileExt}`;
+    // MOBILE OPTIMIZATION: Compress image before upload (max 800px, JPEG 0.6)
+    console.log(`[AddProductPage] Compressing ${type} image...`);
+    let fileToUpload: File = file;
+    
+    try {
+      const compressedBlob = await compressImage(file, 800, 0.6);
+      fileToUpload = blobToFile(compressedBlob, `${barcode}_${type}_${Date.now()}.jpg`);
+      console.log(`[AddProductPage] Compression complete: ${(file.size / 1024).toFixed(1)}KB → ${(fileToUpload.size / 1024).toFixed(1)}KB`);
+    } catch (compressionError) {
+      console.warn("[AddProductPage] Compression failed, using original:", compressionError);
+    }
+
+    const fileName = `${barcode}_${type}_${Date.now()}.jpg`;
     const filePath = `${fileName}`;
 
     const { error } = await supabase.storage
       .from("product-images")
-      .upload(filePath, file);
+      .upload(filePath, fileToUpload);
 
     if (error) {
       console.error("Upload error:", error);
