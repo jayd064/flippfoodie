@@ -186,13 +186,13 @@ serve(async (req) => {
   }
 
   try {
-    const { barcode } = await req.json();
+    const { barcode, fillMissingData } = await req.json();
 
     if (!barcode) {
       throw new Error("Barcode is required");
     }
 
-    console.log(`[analyze-product] Starting hybrid analysis for barcode: ${barcode}`);
+    console.log(`[analyze-product] Starting hybrid analysis for barcode: ${barcode}${fillMissingData ? ' (fill missing data mode)' : ''}`);
 
     // Initialize Supabase client with service role for updates
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -261,9 +261,11 @@ serve(async (req) => {
       console.error(`[analyze-product] OpenFoodFacts API error:`, offError);
     }
 
-    // PRIORITY 2: Fallback to AI Vision if OpenFoodFacts failed
-    if (!analysis) {
-      console.log(`[analyze-product] Falling back to AI Vision analysis...`);
+    // PRIORITY 2: Fallback to AI Vision if OpenFoodFacts failed OR if we need to fill missing data
+    const needsAIFill = fillMissingData && analysis && (!analysis.ingredients_text || !product.ingredients_text);
+    
+    if (!analysis || needsAIFill) {
+      console.log(`[analyze-product] ${needsAIFill ? 'Filling missing data with AI...' : 'Falling back to AI Vision analysis...'}`);
       
       const ingredientsImageUrl = product.back_image_url || product.front_image_url;
       

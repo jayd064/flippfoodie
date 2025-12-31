@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, Clock, AlertTriangle, RotateCcw } from "lucide-react";
-import { MemeHeader } from "@/components/product/MemeHeader";
+import { ScoreGradientHeader } from "@/components/product/ScoreGradientHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -37,6 +37,8 @@ const ingredientRoasts: Record<string, string> = {
   "palm oil": "⚠️ The guest nobody invited.",
   "sugar": "⚠️ Sweet but toxic.",
   "maida": "⚠️ Glue for your gut.",
+  "high fructose corn syrup": "⚠️ The sweetness trap.",
+  "sodium": "⚠️ Salt overload alert.",
 };
 
 // Get random video from array
@@ -75,20 +77,22 @@ const parseIngredientsWithRoasts = (ingredientsText: string | null) => {
 
 // Get score color based on value
 const getScoreBgColor = (score: number) => {
-  if (score < 40) return "bg-red-500";
-  if (score <= 70) return "bg-yellow-500";
-  return "bg-green-500";
+  if (score < 40) return "bg-score-bad";
+  if (score <= 70) return "bg-score-medium";
+  return "bg-score-good";
 };
 
 const ProductPage = () => {
   const { barcode } = useParams<{ barcode: string }>();
   const [searchParams] = useSearchParams();
   const isAnalyzing = searchParams.get("analyzing") === "true";
+  const queryClient = useQueryClient();
+  
   const [showSpinner, setShowSpinner] = useState(true);
   const [revealedScore, setRevealedScore] = useState<number | null>(null);
   const [isFetching, setIsFetching] = useState(false);
-  const [dataSource, setDataSource] = useState<string | null>(null);
   const [analysisFailed, setAnalysisFailed] = useState(false);
+  const [isCalculatingDetails, setIsCalculatingDetails] = useState(false);
   const { toast } = useToast();
   
   const { data: product, isLoading, refetch } = useQuery({
@@ -125,6 +129,27 @@ const ProductPage = () => {
         if (product.health_score === 0 && product.analysis_summary?.includes("Could not analyze")) {
           setAnalysisFailed(true);
         }
+        
+        // SMART DATA RECOVERY: If ingredients or nutriments are missing, trigger background AI
+        if (product.health_score > 0 && !product.ingredients_text && product.back_image_url) {
+          console.log("[ProductPage] Missing ingredients - triggering background AI analysis");
+          setIsCalculatingDetails(true);
+          
+          supabase.functions.invoke("analyze-product", {
+            body: { barcode, fillMissingData: true }
+          }).then(({ error }) => {
+            if (!error) {
+              // Refetch product data after AI analysis
+              setTimeout(() => {
+                refetch();
+                setIsCalculatingDetails(false);
+              }, 3000);
+            } else {
+              setIsCalculatingDetails(false);
+            }
+          });
+        }
+        
         return;
       }
       
@@ -139,7 +164,7 @@ const ProductPage = () => {
     }
     
     setShowSpinner(false);
-  }, [product, isAnalyzing]);
+  }, [product, isAnalyzing, barcode, refetch]);
 
   const handleRevealResult = async () => {
     if (!barcode) return;
@@ -158,6 +183,9 @@ const ProductPage = () => {
 
       if (data?.health_score !== null && data?.health_score !== undefined) {
         setRevealedScore(data.health_score);
+        
+        // Invalidate the query cache to update the UI
+        queryClient.invalidateQueries({ queryKey: ["product", barcode] });
         
         // Check for failed analysis
         if (data.health_score === 0 && data.analysis_summary?.includes("Could not analyze")) {
@@ -232,15 +260,16 @@ const ProductPage = () => {
         </div>
       )}
 
-      {/* Header - Video Player when score revealed, Image otherwise */}
-      <div className={`relative h-56 ${showSpinner ? 'mt-12' : ''}`}>
-        <MemeHeader
-          videoUrl={memeVideo || ""}
-          fallbackImageUrl={imageUrl}
+      {/* Header - Gradient Background with Score-based colors */}
+      <div className={`relative ${showSpinner ? 'mt-12' : ''}`}>
+        <ScoreGradientHeader
+          score={revealedScore}
+          imageUrl={imageUrl}
+          videoUrl={memeVideo}
           productName={productName}
-          isRevealed={hasScore && !!memeVideo}
+          isRevealed={hasScore}
+          isCalculating={isCalculatingDetails}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent pointer-events-none" />
         
         {/* Navigation */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-12">
@@ -323,8 +352,8 @@ const ProductPage = () => {
         {/* Tap to Reveal Button */}
         {showRevealButton && !analysisFailed && (
           <div className="mt-5 bg-card rounded-2xl p-6 border border-border/50 shadow-soft text-center animate-fade-up">
-            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-8 h-8 text-green-500" />
+            <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-8 h-8 text-success" />
             </div>
             <h3 className="font-semibold text-foreground mb-2">Analysis Complete!</h3>
             <p className="text-sm text-muted-foreground mb-4">
@@ -333,7 +362,7 @@ const ProductPage = () => {
             <button
               onClick={handleRevealResult}
               disabled={isFetching}
-              className="w-full py-4 bg-green-500 text-white font-bold text-lg rounded-xl hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-4 bg-success text-success-foreground font-bold text-lg rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isFetching ? (
                 <>
@@ -346,6 +375,19 @@ const ProductPage = () => {
                 </>
               )}
             </button>
+          </div>
+        )}
+
+        {/* Calculating Details Spinner */}
+        {isCalculatingDetails && hasScore && (
+          <div className="mt-5 bg-primary/10 rounded-2xl p-4 border border-primary/30 shadow-soft animate-fade-up">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Calculating details...</p>
+                <p className="text-xs text-muted-foreground">Finding ingredients & nutrition info</p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -383,6 +425,11 @@ const ProductPage = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : isCalculatingDetails ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Extracting ingredients...</span>
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">No ingredients detected.</p>
