@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, Clock, AlertTriangle, RotateCcw } from "lucide-react";
-import { ScoreGradientHeader } from "@/components/product/ScoreGradientHeader";
+import { ArrowLeft, Share2, Bookmark, Loader2, Sparkles, Clock, RotateCcw } from "lucide-react";
+import { TikTokHeader } from "@/components/product/TikTokHeader";
+import { VillainsSection } from "@/components/product/VillainsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -32,15 +33,6 @@ const victoryMemes = [
   "https://media.giphy.com/media/l4pTfx2qLszoacZRS/giphy.mp4",
 ];
 
-// Ingredient roasts
-const ingredientRoasts: Record<string, string> = {
-  "palm oil": "⚠️ The guest nobody invited.",
-  "sugar": "⚠️ Sweet but toxic.",
-  "maida": "⚠️ Glue for your gut.",
-  "high fructose corn syrup": "⚠️ The sweetness trap.",
-  "sodium": "⚠️ Salt overload alert.",
-};
-
 // Get random video from array
 const getRandomVideo = (videos: string[]) => {
   return videos[Math.floor(Math.random() * videos.length)];
@@ -52,34 +44,6 @@ const getMemeForScore = (score: number | null) => {
   if (score < 40) return getRandomVideo(guiltyMemes);
   if (score < 70) return getRandomVideo(confusedMemes);
   return getRandomVideo(victoryMemes);
-};
-
-// Parse ingredients and add roasts
-const parseIngredientsWithRoasts = (ingredientsText: string | null) => {
-  if (!ingredientsText) return [];
-  
-  const ingredientsList = ingredientsText.split(',').map(i => i.trim()).filter(Boolean);
-  
-  return ingredientsList.map(ingredient => {
-    const lowerIngredient = ingredient.toLowerCase();
-    let roast = "";
-    
-    for (const [key, value] of Object.entries(ingredientRoasts)) {
-      if (lowerIngredient.includes(key)) {
-        roast = value;
-        break;
-      }
-    }
-    
-    return { name: ingredient, roast };
-  });
-};
-
-// Get score color based on value
-const getScoreBgColor = (score: number) => {
-  if (score < 40) return "bg-score-bad";
-  if (score <= 70) return "bg-score-medium";
-  return "bg-score-good";
 };
 
 const ProductPage = () => {
@@ -213,8 +177,7 @@ const ProductPage = () => {
     }
   };
 
-  // Parse real ingredients with roasts
-  const ingredients = parseIngredientsWithRoasts(product?.ingredients_text || null);
+  // Show "Tap to Reveal" button when spinner has stopped but no score yet
   
   // Show "Tap to Reveal" button when spinner has stopped but no score yet
   const showRevealButton = !showSpinner && revealedScore === null && barcode;
@@ -260,19 +223,19 @@ const ProductPage = () => {
         </div>
       )}
 
-      {/* Header - Gradient Background with Score-based colors */}
+      {/* TikTok Style Header - Meme Cover + Product Profile Pic */}
       <div className={`relative ${showSpinner ? 'mt-12' : ''}`}>
-        <ScoreGradientHeader
+        <TikTokHeader
           score={revealedScore}
-          imageUrl={imageUrl}
           videoUrl={memeVideo}
+          productImageUrl={imageUrl}
           productName={productName}
           isRevealed={hasScore}
           isCalculating={isCalculatingDetails}
         />
         
-        {/* Navigation */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-12">
+        {/* Navigation - overlaid on header */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-12 z-20">
           <Link
             to="/"
             className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors"
@@ -291,42 +254,20 @@ const ProductPage = () => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-5 -mt-8 relative z-10">
+      {/* Content - starts below the profile pic */}
+      <div className="px-5 pt-4 relative z-10">
         {/* Product Info Card */}
-        <div className="bg-card rounded-2xl p-5 shadow-card border border-border/50 animate-fade-up">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground">{productBrand}</p>
-              <h1 className="text-xl font-bold text-foreground mt-1">
-                {productName}
-              </h1>
+        <div className="bg-card rounded-2xl p-5 shadow-card border border-border/50 animate-fade-up text-center">
+          <p className="text-sm text-muted-foreground">{productBrand}</p>
+          <h1 className="text-xl font-bold text-foreground mt-1">{productName}</h1>
+          
+          {/* Last analyzed timestamp */}
+          {product?.last_analyzed_at && hasScore && (
+            <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2">
+              <Clock className="w-3 h-3" />
+              <span>Updated: {format(new Date(product.last_analyzed_at), "h:mm a")}</span>
             </div>
-            <div className="flex flex-col items-end gap-1">
-              {/* Health Score or Spinner */}
-              {showSpinner ? (
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                  <Loader2 className="w-7 h-7 text-primary animate-spin" />
-                </div>
-              ) : hasScore && revealedScore !== null ? (
-                <div className={`w-16 h-16 rounded-full ${getScoreBgColor(revealedScore)} flex items-center justify-center shadow-lg`}>
-                  <span className="text-2xl font-bold text-white">{revealedScore}</span>
-                </div>
-              ) : analysisFailed ? (
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                  <AlertTriangle className="w-7 h-7 text-destructive" />
-                </div>
-              ) : null}
-              
-              {/* Last analyzed timestamp */}
-              {product?.last_analyzed_at && hasScore && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="w-3 h-3" />
-                  <span>Updated: {format(new Date(product.last_analyzed_at), "h:mm a")}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Analysis Failed - Help Card */}
@@ -391,49 +332,13 @@ const ProductPage = () => {
           </div>
         )}
 
-        {/* Ingredients List */}
+        {/* Villains Section - Smart Ingredient Filtering */}
         {hasScore && (
-          <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-100">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-1.5 rounded-full bg-primary/10">
-                <AlertTriangle className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground">Ingredients</h3>
-            </div>
-            
-            {ingredients.length > 0 ? (
-              <div className="space-y-2">
-                {ingredients.map((ingredient, index) => (
-                  <div 
-                    key={index} 
-                    className={`p-3 rounded-xl border ${
-                      ingredient.roast 
-                        ? 'bg-destructive/5 border-destructive/20' 
-                        : 'bg-muted/50 border-border/50'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      {ingredient.roast && (
-                        <div className="w-2 h-2 mt-1.5 rounded-full bg-destructive flex-shrink-0" />
-                      )}
-                      <div>
-                        <p className="font-medium text-foreground">{ingredient.name}</p>
-                        {ingredient.roast && (
-                          <p className="text-sm text-destructive mt-0.5">{ingredient.roast}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : isCalculatingDetails ? (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Extracting ingredients...</span>
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">No ingredients detected.</p>
-            )}
+          <div className="mt-5">
+            <VillainsSection 
+              ingredientsText={product?.ingredients_text || null}
+              isLoading={isCalculatingDetails}
+            />
           </div>
         )}
 
