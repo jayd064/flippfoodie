@@ -19,6 +19,8 @@ interface OpenFoodFactsProduct {
   product_name?: string;
   brands?: string;
   ingredients_text?: string;
+  image_front_url?: string;
+  image_url?: string;
   nutriments?: {
     "energy-kcal_100g"?: number;
     sugars_100g?: number;
@@ -90,8 +92,21 @@ const calculateHealthScore = (product: OpenFoodFactsProduct): number => {
   return Math.max(0, Math.min(100, Math.round(score)));
 };
 
+// Extended analysis result with product metadata
+interface ExtendedAnalysisResult extends AnalysisResult {
+  product_name?: string;
+  brand?: string;
+  front_image_url?: string;
+  nutriments?: {
+    energy_kcal?: number;
+    sugars?: number;
+    fat?: number;
+    protein?: number;
+  };
+}
+
 // Generate summary and points from OpenFoodFacts data
-const generateAnalysisFromOFF = (product: OpenFoodFactsProduct, healthScore: number): AnalysisResult => {
+const generateAnalysisFromOFF = (product: OpenFoodFactsProduct, healthScore: number): ExtendedAnalysisResult => {
   const positivePoints: string[] = [];
   const negativePoints: string[] = [];
   const nutriments = product.nutriments || {};
@@ -134,13 +149,14 @@ const generateAnalysisFromOFF = (product: OpenFoodFactsProduct, healthScore: num
   }
   
   // Generate summary
+  const productDisplayName = product.product_name || "This product";
   let summary = "";
   if (healthScore >= 70) {
-    summary = `${product.product_name || "This product"} is a relatively healthy choice with a score of ${healthScore}/100.`;
+    summary = `${productDisplayName} is a relatively healthy choice with a score of ${healthScore}/100.`;
   } else if (healthScore >= 40) {
-    summary = `${product.product_name || "This product"} has some nutritional concerns. Consume in moderation.`;
+    summary = `${productDisplayName} has some nutritional concerns. Consume in moderation.`;
   } else {
-    summary = `${product.product_name || "This product"} has significant nutritional concerns. Consider healthier alternatives.`;
+    summary = `${productDisplayName} has significant nutritional concerns. Consider healthier alternatives.`;
   }
   
   return {
@@ -149,7 +165,17 @@ const generateAnalysisFromOFF = (product: OpenFoodFactsProduct, healthScore: num
     analysis_summary: summary,
     positive_points: positivePoints.slice(0, 4),
     negative_points: negativePoints.slice(0, 4),
-    source: "openfoodfacts"
+    source: "openfoodfacts",
+    // Include product metadata from OpenFoodFacts
+    product_name: product.product_name,
+    brand: product.brands,
+    front_image_url: product.image_front_url || product.image_url,
+    nutriments: {
+      energy_kcal: nutriments["energy-kcal_100g"],
+      sugars: nutriments.sugars_100g,
+      fat: nutriments.fat_100g,
+      protein: nutriments.proteins_100g,
+    }
   };
 };
 
@@ -189,7 +215,7 @@ serve(async (req) => {
 
     // PRIORITY 1: Try OpenFoodFacts API first (instant data)
     console.log(`[analyze-product] Trying OpenFoodFacts API...`);
-    let analysis: AnalysisResult | null = null;
+    let analysis: ExtendedAnalysisResult | null = null;
     
     try {
       const offResponse = await fetch(
@@ -200,6 +226,22 @@ serve(async (req) => {
       if (offResponse.ok) {
         const offData = await offResponse.json();
         
+        // CRITICAL DEBUG: Log the full API response structure
+        console.log(`[analyze-product] OpenFoodFacts API Response:`, JSON.stringify({
+          status: offData.status,
+          product_name: offData.product?.product_name,
+          brands: offData.product?.brands,
+          image_front_url: offData.product?.image_front_url,
+          image_url: offData.product?.image_url,
+          ingredients_text: offData.product?.ingredients_text?.substring(0, 100),
+          nutriments: offData.product?.nutriments ? {
+            "energy-kcal_100g": offData.product.nutriments["energy-kcal_100g"],
+            sugars_100g: offData.product.nutriments.sugars_100g,
+            fat_100g: offData.product.nutriments.fat_100g,
+            proteins_100g: offData.product.nutriments.proteins_100g,
+          } : null
+        }));
+        
         if (offData.status === 1 && offData.product) {
           console.log(`[analyze-product] ✅ OpenFoodFacts HIT! Product: ${offData.product.product_name}`);
           
@@ -208,6 +250,8 @@ serve(async (req) => {
           
           analysis = generateAnalysisFromOFF(offProduct, healthScore);
           
+          console.log(`[analyze-product] Extracted data - Name: ${analysis.product_name}, Brand: ${analysis.brand}, Image: ${analysis.front_image_url}`);
+          console.log(`[analyze-product] Nutriments: calories=${analysis.nutriments?.energy_kcal}, sugar=${analysis.nutriments?.sugars}, fat=${analysis.nutriments?.fat}, protein=${analysis.nutriments?.protein}`);
           console.log(`[analyze-product] OpenFoodFacts score: ${healthScore}, source: openfoodfacts`);
         } else {
           console.log(`[analyze-product] OpenFoodFacts: Product not found (status: ${offData.status})`);
@@ -373,10 +417,34 @@ READ THE ACTUAL TEXT IN THIS IMAGE and provide a score based on what you see.`
       last_analyzed_at: new Date().toISOString()
     };
 
+    // Update product metadata from OpenFoodFacts if available
+    const extendedAnalysis = analysis as ExtendedAnalysisResult;
+    
+    // Update name if we got it from API and current name is generic
+    if (extendedAnalysis.product_name && (product.name === "Unknown Product" || product.name === barcode)) {
+      updatePayload.name = extendedAnalysis.product_name;
+      console.log(`[analyze-product] Updating name to: ${extendedAnalysis.product_name}`);
+    }
+    
+    // Update brand if we got it from API and current brand is missing
+    if (extendedAnalysis.brand && !product.brand) {
+      updatePayload.brand = extendedAnalysis.brand;
+      console.log(`[analyze-product] Updating brand to: ${extendedAnalysis.brand}`);
+    }
+    
+    // Update front image if we got it from API and current image is missing
+    if (extendedAnalysis.front_image_url && !product.front_image_url) {
+      updatePayload.front_image_url = extendedAnalysis.front_image_url;
+      console.log(`[analyze-product] Updating front_image_url to: ${extendedAnalysis.front_image_url}`);
+    }
+
     // Update ingredients_text if we got it and product doesn't have it
     if (analysis.ingredients_text && !product.ingredients_text) {
       updatePayload.ingredients_text = analysis.ingredients_text;
+      console.log(`[analyze-product] Updating ingredients_text`);
     }
+    
+    console.log(`[analyze-product] Update payload:`, JSON.stringify(updatePayload));
 
     const { error: updateError } = await supabase
       .from("products")
