@@ -202,51 +202,52 @@ const ProductPage = () => {
 
   const handleShare = async () => {
     if (isSharing) return;
-    
     setIsSharing(true);
     toast({ title: "Cooking your meme... 🍳", description: "Generating image..." });
 
-    const backButton = document.getElementById("back-button");
-    const shareButton = document.getElementById("share-button");
-    
+    const backBtn = document.getElementById("back-button");
+    const shareBtn = document.getElementById("share-button");
+
     try {
-      if (backButton) backButton.style.opacity = "0";
-      if (shareButton) shareButton.style.opacity = "0";
+      // Hide buttons for clean screenshot
+      if (backBtn) backBtn.style.opacity = "0";
+      if (shareBtn) shareBtn.style.opacity = "0";
 
-      if (cardRef.current) {
-        const canvas = await html2canvas(cardRef.current, {
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: null,
-          scale: 2,
-        });
+      if (!cardRef.current) {
+        await shareTextFallback();
+        return;
+      }
 
-        const blob = await new Promise<Blob | null>((resolve) => {
-          canvas.toBlob((b) => resolve(b), "image/png");
-        });
+      const canvas = await html2canvas(cardRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        scale: 2,
+      });
 
-        if (blob) {
-          const file = new File([blob], "flippfoodie-scan.png", { type: "image/png" });
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const nav = navigator as any;
-          
-          if (nav.canShare && nav.canShare({ files: [file] })) {
-            await nav.share({ files: [file], title: "FlippFoodie Scan" });
-          } else {
-            await shareTextFallback();
-          }
-        } else {
-          await shareTextFallback();
-        }
+      const blob: Blob | null = await new Promise((resolve) => 
+        canvas.toBlob((b) => resolve(b), "image/png")
+      );
+
+      if (!blob) {
+        await shareTextFallback();
+        return;
+      }
+
+      const file = new File([blob], "flippfoodie-scan.png", { type: "image/png" });
+      
+      // Use any to bypass TypeScript strict checking
+      if ((navigator as any).canShare?.({ files: [file] })) {
+        await (navigator as any).share({ files: [file], title: "FlippFoodie Scan" });
       } else {
         await shareTextFallback();
       }
-    } catch (error) {
-      console.error("Share error:", error);
+    } catch {
       await shareTextFallback();
     } finally {
-      if (backButton) backButton.style.opacity = "1";
-      if (shareButton) shareButton.style.opacity = "1";
+      // Restore buttons
+      if (backBtn) backBtn.style.opacity = "1";
+      if (shareBtn) shareBtn.style.opacity = "1";
       setIsSharing(false);
     }
   };
