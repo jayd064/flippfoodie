@@ -1,14 +1,21 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Share2, Loader2, Sparkles, Clock, RotateCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  Share2,
+  Loader2,
+  Sparkles,
+  Clock,
+  RotateCcw,
+} from "lucide-react";
 import { TikTokHeader } from "@/components/product/TikTokHeader";
 import { VillainsSection } from "@/components/product/VillainsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import html2canvas from "html2canvas";
-// Meme video arrays - 5 videos each
+
 const guiltyMemes = [
   "https://media.giphy.com/media/3o7TKnO6Wve6502iJ2/giphy.mp4",
   "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.mp4",
@@ -33,12 +40,10 @@ const victoryMemes = [
   "https://media.giphy.com/media/l4pTfx2qLszoacZRS/giphy.mp4",
 ];
 
-// Get random video from array
 const getRandomVideo = (videos: string[]) => {
   return videos[Math.floor(Math.random() * videos.length)];
 };
 
-// Get meme based on score
 const getMemeForScore = (score: number | null) => {
   if (score === null || score === 0) return null;
   if (score < 40) return getRandomVideo(guiltyMemes);
@@ -78,34 +83,27 @@ const ProductPage = () => {
     enabled: !!barcode,
   });
 
-  // Random meme video - memoized so it stays the same during the session
   const memeVideo = useMemo(() => {
     return getMemeForScore(revealedScore);
   }, [revealedScore]);
 
-  // Smart Loading: Check if product already has data (instant OpenFoodFacts result)
   useEffect(() => {
     if (product) {
-      // If product already has a valid score, show it immediately (OpenFoodFacts path)
       if (product.health_score !== null && product.health_score !== undefined) {
         setRevealedScore(product.health_score);
         setShowSpinner(false);
         
-        // Check if it's a failed analysis (score 0 with failed indicators)
         if (product.health_score === 0 && product.analysis_summary?.includes("Could not analyze")) {
           setAnalysisFailed(true);
         }
         
-        // SMART DATA RECOVERY: If ingredients or nutriments are missing, trigger background AI
         if (product.health_score > 0 && !product.ingredients_text && product.back_image_url) {
-          console.log("[ProductPage] Missing ingredients - triggering background AI analysis");
           setIsCalculatingDetails(true);
           
           supabase.functions.invoke("analyze-product", {
             body: { barcode, fillMissingData: true }
           }).then(({ error }) => {
             if (!error) {
-              // Refetch product data after AI analysis
               setTimeout(() => {
                 refetch();
                 setIsCalculatingDetails(false);
@@ -119,7 +117,6 @@ const ProductPage = () => {
         return;
       }
       
-      // For new products awaiting analysis, show 3-second spinner then reveal button
       if (isAnalyzing) {
         setShowSpinner(true);
         const timer = setTimeout(() => {
@@ -149,11 +146,8 @@ const ProductPage = () => {
 
       if (data?.health_score !== null && data?.health_score !== undefined) {
         setRevealedScore(data.health_score);
-        
-        // Invalidate the query cache to update the UI
         queryClient.invalidateQueries({ queryKey: ["product", barcode] });
         
-        // Check for failed analysis
         if (data.health_score === 0 && data.analysis_summary?.includes("Could not analyze")) {
           setAnalysisFailed(true);
           toast({ 
@@ -179,14 +173,42 @@ const ProductPage = () => {
     }
   };
 
-  // Screenshot sharing handler
+  const shareTextFallback = async () => {
+    const shareText = `Check out this product I scanned on FlippFoodie! Score: ${revealedScore ?? "Pending"}`;
+    try {
+      if (navigator.share) {
+        await (navigator as unknown as { share: (data: object) => Promise<void> }).share({
+          title: product?.name || "FlippFoodie Scan",
+          text: shareText,
+          url: window.location.href,
+        });
+      } else {
+        await navigator.clipboard.writeText(`${shareText} ${window.location.href}`);
+        toast({ title: "Copied!", description: "Link copied to clipboard." });
+      }
+    } catch {
+      try {
+        await navigator.clipboard.writeText(`${shareText} ${window.location.href}`);
+        toast({ title: "Copied!", description: "Link copied to clipboard." });
+      } catch {
+        toast({ title: "Share failed", description: "Could not share.", variant: "destructive" });
+      }
+    }
+  };
+
   const handleShare = async () => {
     if (isSharing) return;
     
     setIsSharing(true);
     toast({ title: "Cooking your meme... 🍳", description: "Generating image..." });
 
+    const backButton = document.getElementById("back-button");
+    const shareButton = document.getElementById("share-button");
+    
     try {
+      if (backButton) backButton.style.opacity = "0";
+      if (shareButton) shareButton.style.opacity = "0";
+
       if (cardRef.current) {
         const canvas = await html2canvas(cardRef.current, {
           useCORS: true,
@@ -195,52 +217,38 @@ const ProductPage = () => {
           scale: 2,
         });
 
-        canvas.toBlob(async (blob) => {
-          if (blob && navigator.canShare && navigator.canShare({ files: [new File([blob], 'flippfoodie-scan.png', { type: 'image/png' })] })) {
-            const file = new File([blob], 'flippfoodie-scan.png', { type: 'image/png' });
-            await navigator.share({
-              files: [file],
-              title: 'FlippFoodie Scan',
-            });
+        const blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((b) => resolve(b), "image/png");
+        });
+
+        if (blob) {
+          const file = new File([blob], "flippfoodie-scan.png", { type: "image/png" });
+          const nav = navigator as unknown as { 
+            canShare?: (data: { files: File[] }) => boolean;
+            share: (data: { files?: File[]; title?: string }) => Promise<void>;
+          };
+          
+          if (nav.canShare && nav.canShare({ files: [file] })) {
+            await nav.share({ files: [file], title: "FlippFoodie Scan" });
           } else {
-            // Fallback to text share if file sharing not supported
-            if (navigator.share) {
-              await navigator.share({
-                title: productName,
-                text: `Check out this product I scanned on FlippFoodie! Score: ${revealedScore ?? "Pending"}`,
-                url: window.location.href,
-              });
-            } else {
-              await navigator.clipboard.writeText(window.location.href);
-              toast({ title: "Copied!", description: "Link copied to clipboard." });
-            }
+            await shareTextFallback();
           }
-          setIsSharing(false);
-        }, 'image/png');
+        } else {
+          await shareTextFallback();
+        }
+      } else {
+        await shareTextFallback();
       }
     } catch (error) {
       console.error("Share error:", error);
-      // Fallback to text share on error
-      try {
-        if (navigator.share) {
-          await navigator.share({
-            title: productName,
-            text: `Check out this product I scanned on FlippFoodie! Score: ${revealedScore ?? "Pending"}`,
-            url: window.location.href,
-          });
-        } else {
-          await navigator.clipboard.writeText(window.location.href);
-          toast({ title: "Copied!", description: "Link copied to clipboard." });
-        }
-      } catch {
-        toast({ title: "Share failed", description: "Could not share. Link copied instead.", variant: "destructive" });
-        navigator.clipboard.writeText(window.location.href);
-      }
+      await shareTextFallback();
+    } finally {
+      if (backButton) backButton.style.opacity = "1";
+      if (shareButton) shareButton.style.opacity = "1";
       setIsSharing(false);
     }
   };
 
-  // Show "Tap to Reveal" button when spinner has stopped but no score yet
   const showRevealButton = !showSpinner && revealedScore === null && barcode;
   const hasScore = revealedScore !== null && revealedScore > 0;
 
@@ -274,7 +282,6 @@ const ProductPage = () => {
 
   return (
     <div className="min-h-screen pb-8">
-      {/* Spinner Banner - Shows for exactly 3 seconds */}
       {showSpinner && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-3 px-4">
           <div className="flex items-center justify-center gap-2 animate-pulse">
@@ -284,8 +291,7 @@ const ProductPage = () => {
         </div>
       )}
 
-      {/* TikTok Style Header - Meme Cover + Product Profile Pic */}
-      <div ref={cardRef} className={`relative ${showSpinner ? 'mt-12' : ''}`}>
+      <div ref={cardRef} className={`relative ${showSpinner ? "mt-12" : ""}`}>
         <TikTokHeader
           score={revealedScore}
           videoUrl={memeVideo}
@@ -295,8 +301,7 @@ const ProductPage = () => {
           isCalculating={isCalculatingDetails}
         />
         
-        {/* Back Button - top left */}
-        <div className="absolute top-0 left-0 p-4 pt-12 z-20">
+        <div id="back-button" className="absolute top-0 left-0 p-4 pt-12 z-20 transition-opacity">
           <Link
             to="/"
             className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors"
@@ -305,8 +310,7 @@ const ProductPage = () => {
           </Link>
         </div>
         
-        {/* Share Button - bottom right of header */}
-        <div className="absolute bottom-20 right-4 z-40">
+        <div id="share-button" className="absolute bottom-20 right-4 z-40 transition-opacity">
           <button 
             onClick={handleShare}
             disabled={isSharing}
@@ -321,14 +325,11 @@ const ProductPage = () => {
         </div>
       </div>
 
-      {/* Content - starts below the profile pic */}
       <div className="px-5 pt-4 relative z-10">
-        {/* Product Info Card */}
         <div className="bg-card rounded-2xl p-5 shadow-card border border-border/50 animate-fade-up text-center">
           <p className="text-sm text-muted-foreground">{productBrand}</p>
           <h1 className="text-xl font-bold text-foreground mt-1">{productName}</h1>
           
-          {/* Last analyzed timestamp */}
           {product?.last_analyzed_at && hasScore && (
             <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2">
               <Clock className="w-3 h-3" />
@@ -337,7 +338,6 @@ const ProductPage = () => {
           )}
         </div>
 
-        {/* Analysis Failed - Help Card */}
         {analysisFailed && (
           <div className="mt-5 bg-destructive/10 rounded-2xl p-6 border border-destructive/30 shadow-soft text-center animate-fade-up">
             <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
@@ -357,7 +357,6 @@ const ProductPage = () => {
           </div>
         )}
 
-        {/* Tap to Reveal Button */}
         {showRevealButton && !analysisFailed && (
           <div className="mt-5 bg-card rounded-2xl p-6 border border-border/50 shadow-soft text-center animate-fade-up">
             <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-4">
@@ -378,15 +377,12 @@ const ProductPage = () => {
                   Fetching...
                 </>
               ) : (
-                <>
-                  ✨ Tap to View Result
-                </>
+                <>✨ Tap to View Result</>
               )}
             </button>
           </div>
         )}
 
-        {/* Calculating Details Spinner */}
         {isCalculatingDetails && hasScore && (
           <div className="mt-5 bg-primary/10 rounded-2xl p-4 border border-primary/30 shadow-soft animate-fade-up">
             <div className="flex items-center gap-3">
@@ -399,7 +395,6 @@ const ProductPage = () => {
           </div>
         )}
 
-        {/* Villains Section - Smart Ingredient Filtering */}
         {hasScore && (
           <div className="mt-5">
             <VillainsSection 
@@ -409,7 +404,6 @@ const ProductPage = () => {
           </div>
         )}
 
-        {/* Analysis Summary */}
         {hasScore && product?.analysis_summary && (
           <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-200">
             <h3 className="font-semibold text-foreground mb-2">Summary</h3>
