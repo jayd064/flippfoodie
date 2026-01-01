@@ -175,15 +175,19 @@ const ProductPage = () => {
 
   const shareTextFallback = async () => {
     const shareText = `Check out this product I scanned on FlippFoodie! Score: ${revealedScore ?? "Pending"}`;
+    const shareUrl = window.location.href;
+    
     try {
-      if (navigator.share) {
-        await (navigator as unknown as { share: (data: object) => Promise<void> }).share({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nav = navigator as any;
+      if (nav.share) {
+        await nav.share({
           title: product?.name || "FlippFoodie Scan",
           text: shareText,
-          url: window.location.href,
+          url: shareUrl,
         });
       } else {
-        await navigator.clipboard.writeText(`${shareText} ${window.location.href}`);
+        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
         toast({ title: "Copied!", description: "Link copied to clipboard." });
       }
     } catch {
@@ -223,10 +227,8 @@ const ProductPage = () => {
 
         if (blob) {
           const file = new File([blob], "flippfoodie-scan.png", { type: "image/png" });
-          const nav = navigator as unknown as { 
-            canShare?: (data: { files: File[] }) => boolean;
-            share: (data: { files?: File[]; title?: string }) => Promise<void>;
-          };
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const nav = navigator as any;
           
           if (nav.canShare && nav.canShare({ files: [file] })) {
             await nav.share({ files: [file], title: "FlippFoodie Scan" });
