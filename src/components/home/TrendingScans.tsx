@@ -1,5 +1,4 @@
 import { ChevronRight } from "lucide-react";
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -8,8 +7,8 @@ const useTrendingProducts = () => {
     queryKey: ["trending-scans"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("scans")
-        .select("*")
+        .from("products")
+        .select("barcode, name, front_image_url, health_score")
         .order("created_at", { ascending: false })
         .limit(4);
       if (error) throw error;
@@ -27,6 +26,10 @@ const getScoreColor = (score: number) => {
 export const TrendingScans = () => {
   const { data: trendingProducts, isLoading } = useTrendingProducts();
 
+  if (isLoading || !trendingProducts?.length) {
+    return null;
+  }
+
   return (
     <section className="mt-10 animate-fade-up animation-delay-200">
       <div className="flex items-center justify-between px-5 mb-4">
@@ -40,19 +43,25 @@ export const TrendingScans = () => {
       <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide">
         {trendingProducts.map((product, index) => (
           <div
-            key={product.id}
+            key={product.barcode}
             className="flex-shrink-0 w-32 animate-scale-in"
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="relative rounded-2xl overflow-hidden bg-card shadow-soft border border-border/50 hover:shadow-card transition-shadow duration-300">
-              <img src={product.image} alt={product.name} className="w-full h-28 object-cover" />
+              <img 
+                src={product.front_image_url || "/placeholder.svg"} 
+                alt={product.name} 
+                className="w-full h-28 object-cover" 
+              />
               <div className="p-3">
                 <p className="text-sm font-medium text-foreground truncate">{product.name}</p>
-                <div
-                  className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${getScoreColor(product.score)}`}
-                >
-                  {product.score}/100
-                </div>
+                {product.health_score !== null && (
+                  <div
+                    className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${getScoreColor(product.health_score)}`}
+                  >
+                    {product.health_score}/100
+                  </div>
+                )}
               </div>
             </div>
           </div>
