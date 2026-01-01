@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Share2, Loader2, Sparkles, Clock, RotateCcw } from "lucide-react";
@@ -7,7 +7,7 @@ import { VillainsSection } from "@/components/product/VillainsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-
+import html2canvas from "html2canvas";
 // Meme video arrays - 5 videos each
 const guiltyMemes = [
   "https://media.giphy.com/media/3o7TKnO6Wve6502iJ2/giphy.mp4",
@@ -57,7 +57,9 @@ const ProductPage = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [analysisFailed, setAnalysisFailed] = useState(false);
   const [isCalculatingDetails, setIsCalculatingDetails] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const { toast } = useToast();
+  const cardRef = useRef<HTMLDivElement>(null);
   
   const { data: product, isLoading, refetch } = useQuery({
     queryKey: ["product", barcode],
@@ -177,8 +179,67 @@ const ProductPage = () => {
     }
   };
 
-  // Show "Tap to Reveal" button when spinner has stopped but no score yet
-  
+  // Screenshot sharing handler
+  const handleShare = async () => {
+    if (isSharing) return;
+    
+    setIsSharing(true);
+    toast({ title: "Cooking your meme... 🍳", description: "Generating image..." });
+
+    try {
+      if (cardRef.current) {
+        const canvas = await html2canvas(cardRef.current, {
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: null,
+          scale: 2,
+        });
+
+        canvas.toBlob(async (blob) => {
+          if (blob && navigator.canShare && navigator.canShare({ files: [new File([blob], 'flippfoodie-scan.png', { type: 'image/png' })] })) {
+            const file = new File([blob], 'flippfoodie-scan.png', { type: 'image/png' });
+            await navigator.share({
+              files: [file],
+              title: 'FlippFoodie Scan',
+            });
+          } else {
+            // Fallback to text share if file sharing not supported
+            if (navigator.share) {
+              await navigator.share({
+                title: productName,
+                text: `Check out this product I scanned on FlippFoodie! Score: ${revealedScore ?? "Pending"}`,
+                url: window.location.href,
+              });
+            } else {
+              await navigator.clipboard.writeText(window.location.href);
+              toast({ title: "Copied!", description: "Link copied to clipboard." });
+            }
+          }
+          setIsSharing(false);
+        }, 'image/png');
+      }
+    } catch (error) {
+      console.error("Share error:", error);
+      // Fallback to text share on error
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: productName,
+            text: `Check out this product I scanned on FlippFoodie! Score: ${revealedScore ?? "Pending"}`,
+            url: window.location.href,
+          });
+        } else {
+          await navigator.clipboard.writeText(window.location.href);
+          toast({ title: "Copied!", description: "Link copied to clipboard." });
+        }
+      } catch {
+        toast({ title: "Share failed", description: "Could not share. Link copied instead.", variant: "destructive" });
+        navigator.clipboard.writeText(window.location.href);
+      }
+      setIsSharing(false);
+    }
+  };
+
   // Show "Tap to Reveal" button when spinner has stopped but no score yet
   const showRevealButton = !showSpinner && revealedScore === null && barcode;
   const hasScore = revealedScore !== null && revealedScore > 0;
@@ -224,7 +285,7 @@ const ProductPage = () => {
       )}
 
       {/* TikTok Style Header - Meme Cover + Product Profile Pic */}
-      <div className={`relative ${showSpinner ? 'mt-12' : ''}`}>
+      <div ref={cardRef} className={`relative ${showSpinner ? 'mt-12' : ''}`}>
         <TikTokHeader
           score={revealedScore}
           videoUrl={memeVideo}
@@ -247,21 +308,15 @@ const ProductPage = () => {
         {/* Share Button - bottom right of header */}
         <div className="absolute bottom-20 right-4 z-40">
           <button 
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({
-                  title: productName,
-                  text: `Check out this product I scanned on FlippFoodie! Score: ${revealedScore ?? "Pending"}`,
-                  url: window.location.href,
-                });
-              } else {
-                toast({ title: "Copied!", description: "Link copied to clipboard." });
-                navigator.clipboard.writeText(window.location.href);
-              }
-            }}
-            className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors"
+            onClick={handleShare}
+            disabled={isSharing}
+            className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors disabled:opacity-50"
           >
-            <Share2 className="w-5 h-5 text-foreground" />
+            {isSharing ? (
+              <Loader2 className="w-5 h-5 text-foreground animate-spin" />
+            ) : (
+              <Share2 className="w-5 h-5 text-foreground" />
+            )}
           </button>
         </div>
       </div>
