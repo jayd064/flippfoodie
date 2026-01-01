@@ -234,15 +234,18 @@ const ProductPage = () => {
           isCalculating={isCalculatingDetails}
         />
         
-        {/* Navigation - overlaid on header */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-12 z-20">
+        {/* Back Button - top left */}
+        <div className="absolute top-0 left-0 p-4 pt-12 z-20">
           <Link
             to="/"
             className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </Link>
-          
+        </div>
+        
+        {/* Share Button - bottom right of header */}
+        <div className="absolute bottom-20 right-4 z-40">
           <button 
             onClick={() => {
               if (navigator.share) {

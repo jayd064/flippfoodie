@@ -119,9 +119,9 @@ export const TikTokHeader = ({
           </button>
         )}
 
-        {/* Score Badge - Glass morphism floating on bottom-right */}
+        {/* Score Badge - Glass morphism floating on top-right (Pokémon HP style) */}
         {stampInfo && score !== null && !isCalculating && (
-          <div className="absolute bottom-4 right-4 z-10">
+          <div className="absolute top-4 right-4 z-50">
             <div className={`
               px-4 py-2.5 rounded-2xl backdrop-blur-md border shadow-xl
               ${score <= 30 ? 'bg-red-500/70 border-red-300/50 text-white' : ''}
