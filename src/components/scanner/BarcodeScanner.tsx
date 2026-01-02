@@ -148,18 +148,18 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 z-50 bg-black transition-colors duration-300 ${scanSuccess ? 'bg-primary/20' : ''}`}>
+    <div className={`fixed inset-0 z-50 bg-[#0a0a0a] transition-colors duration-300 ${scanSuccess ? 'bg-emerald-500/20' : ''}`}>
       {/* HUD Header */}
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-12 z-20">
-        <h2 className="text-lg font-bold text-white tracking-wide drop-shadow-lg">SCAN MODE</h2>
+        <h2 className="text-lg font-bold text-white tracking-widest">SCAN</h2>
         <div className="flex items-center gap-2">
           {torchSupported && (
             <button
               onClick={toggleTorch}
               className={`p-3 rounded-full backdrop-blur-md border transition-all ${
                 torchOn 
-                  ? 'bg-cyan-500/30 text-cyan-400 border-cyan-500/50 shadow-[0_0_20px_rgba(34,211,238,0.4)]' 
-                  : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                  ? 'bg-emerald-500/30 text-emerald-400 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.4)]' 
+                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
               }`}
             >
               <Flashlight className="w-5 h-5" />
@@ -167,9 +167,9 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
           )}
           <button
             onClick={handleClose}
-            className="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-colors"
+            className="p-3 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 transition-colors"
           >
-            <X className="w-5 h-5 text-white" />
+            <X className="w-5 h-5 text-white/60" />
           </button>
         </div>
       </div>
@@ -177,14 +177,14 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
       {/* Scanner Area - Full Screen */}
       <div className="h-full w-full relative">
         {showManualEntry ? (
-          <div className="absolute inset-0 flex items-center justify-center p-5 bg-black/90 z-30">
+          <div className="absolute inset-0 flex items-center justify-center p-5 bg-[#0a0a0a] z-30">
             <div className="w-full max-w-sm space-y-4">
               <div className="text-center space-y-2">
-                <div className="w-16 h-16 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(34,211,238,0.3)]">
-                  <Keyboard className="w-8 h-8 text-cyan-400" />
+                <div className="w-16 h-16 rounded-full bg-[#151515] border border-white/10 flex items-center justify-center mx-auto">
+                  <Keyboard className="w-8 h-8 text-white/60" />
                 </div>
-                <h3 className="text-lg font-bold text-white">MANUAL ENTRY</h3>
-                <p className="text-sm text-white/60">Enter the barcode numbers</p>
+                <h3 className="text-lg font-bold text-white tracking-wide">MANUAL ENTRY</h3>
+                <p className="text-sm text-zinc-500">Enter the barcode numbers</p>
               </div>
               <Input
                 type="text"
@@ -193,19 +193,19 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
                 placeholder="e.g., 8901234567890"
                 value={manualBarcode}
                 onChange={(e) => setManualBarcode(e.target.value.replace(/[^0-9]/g, ''))}
-                className="text-center text-lg tracking-widest bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                className="text-center text-lg tracking-widest bg-[#151515] border-white/10 text-white placeholder:text-zinc-600"
                 autoFocus
               />
               <div className="flex gap-3">
                 <Button
                   variant="outline"
-                  className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  className="flex-1 bg-[#151515] border-white/10 text-white/80 hover:bg-[#1a1a1a]"
                   onClick={() => setShowManualEntry(false)}
                 >
-                  Back to Camera
+                  Back
                 </Button>
                 <Button
-                  className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-black font-bold"
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black font-bold"
                   onClick={handleManualSubmit}
                   disabled={manualBarcode.length < 8}
                 >
@@ -215,23 +215,23 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
             </div>
           </div>
         ) : error ? (
-          <div className="absolute inset-0 flex items-center justify-center p-5 bg-black/90 z-30">
+          <div className="absolute inset-0 flex items-center justify-center p-5 bg-[#0a0a0a] z-30">
             <div className="text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+              <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
                 <AlertCircle className="w-8 h-8 text-red-400" />
               </div>
-              <p className="text-white/60 max-w-xs">{error}</p>
+              <p className="text-zinc-500 max-w-xs">{error}</p>
               <div className="flex flex-col gap-2">
                 <Button 
                   onClick={() => setShowManualEntry(true)} 
-                  className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold"
                 >
                   Enter Code Manually
                 </Button>
                 <Button 
                   onClick={handleClose} 
                   variant="outline"
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  className="bg-[#151515] border-white/10 text-white/80 hover:bg-[#1a1a1a]"
                 >
                   Go Back
                 </Button>
@@ -245,75 +245,99 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
             
             {/* Loading State */}
             {isStarting && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black z-20">
+              <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a] z-20">
                 <div className="text-center space-y-4">
-                  <div className="w-20 h-20 rounded-full bg-cyan-500/20 border-2 border-cyan-500/40 flex items-center justify-center mx-auto animate-pulse shadow-[0_0_40px_rgba(34,211,238,0.4)]">
-                    <Camera className="w-10 h-10 text-cyan-400" />
+                  <div className="w-20 h-20 rounded-full bg-[#151515] border border-white/10 flex items-center justify-center mx-auto animate-pulse">
+                    <Camera className="w-10 h-10 text-white/40" />
                   </div>
-                  <p className="text-white/60 text-sm tracking-wider">INITIALIZING CAMERA...</p>
+                  <p className="text-zinc-500 text-sm tracking-widest">INITIALIZING...</p>
                 </div>
               </div>
             )}
             
             {/* HUD Overlay */}
             <div className="absolute inset-0 pointer-events-none z-10">
-              {/* Dark overlay with cutout */}
+              {/* Dark overlay with cutout - Darker for focus */}
               <div className="absolute inset-0">
                 {/* Top dark area */}
-                <div className="absolute top-0 left-0 right-0 h-[calc(50%-80px)] bg-black/70" />
+                <div className="absolute top-0 left-0 right-0 h-[calc(50%-80px)] bg-black/80" />
                 {/* Bottom dark area */}
-                <div className="absolute bottom-0 left-0 right-0 h-[calc(50%-80px)] bg-black/70" />
+                <div className="absolute bottom-0 left-0 right-0 h-[calc(50%-80px)] bg-black/80" />
                 {/* Left dark area */}
-                <div className="absolute top-[calc(50%-80px)] left-0 w-[calc(50%-140px)] h-[160px] bg-black/70" />
+                <div className="absolute top-[calc(50%-80px)] left-0 w-[calc(50%-140px)] h-[160px] bg-black/80" />
                 {/* Right dark area */}
-                <div className="absolute top-[calc(50%-80px)] right-0 w-[calc(50%-140px)] h-[160px] bg-black/70" />
+                <div className="absolute top-[calc(50%-80px)] right-0 w-[calc(50%-140px)] h-[160px] bg-black/80" />
               </div>
               
-              {/* Scan Frame with Corner Brackets */}
+              {/* Scan Frame with Thick Glowing Corner Brackets */}
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[160px]">
-                {/* Corner Brackets */}
+                {/* Corner Brackets - Thick & Glowing White */}
                 {/* Top-left */}
-                <div className="absolute -top-1 -left-1 w-12 h-12">
-                  <div className="absolute top-0 left-0 w-full h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
-                  <div className="absolute top-0 left-0 h-full w-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                <div className="absolute -top-1 -left-1 w-14 h-14">
+                  <div 
+                    className="absolute top-0 left-0 w-full h-2 bg-white rounded-full"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8)) drop-shadow(0 0 20px rgba(255,255,255,0.4))' }}
+                  />
+                  <div 
+                    className="absolute top-0 left-0 h-full w-2 bg-white rounded-full"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8)) drop-shadow(0 0 20px rgba(255,255,255,0.4))' }}
+                  />
                 </div>
                 {/* Top-right */}
-                <div className="absolute -top-1 -right-1 w-12 h-12">
-                  <div className="absolute top-0 right-0 w-full h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
-                  <div className="absolute top-0 right-0 h-full w-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                <div className="absolute -top-1 -right-1 w-14 h-14">
+                  <div 
+                    className="absolute top-0 right-0 w-full h-2 bg-white rounded-full"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8)) drop-shadow(0 0 20px rgba(255,255,255,0.4))' }}
+                  />
+                  <div 
+                    className="absolute top-0 right-0 h-full w-2 bg-white rounded-full"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8)) drop-shadow(0 0 20px rgba(255,255,255,0.4))' }}
+                  />
                 </div>
                 {/* Bottom-left */}
-                <div className="absolute -bottom-1 -left-1 w-12 h-12">
-                  <div className="absolute bottom-0 left-0 w-full h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
-                  <div className="absolute bottom-0 left-0 h-full w-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                <div className="absolute -bottom-1 -left-1 w-14 h-14">
+                  <div 
+                    className="absolute bottom-0 left-0 w-full h-2 bg-white rounded-full"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8)) drop-shadow(0 0 20px rgba(255,255,255,0.4))' }}
+                  />
+                  <div 
+                    className="absolute bottom-0 left-0 h-full w-2 bg-white rounded-full"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8)) drop-shadow(0 0 20px rgba(255,255,255,0.4))' }}
+                  />
                 </div>
                 {/* Bottom-right */}
-                <div className="absolute -bottom-1 -right-1 w-12 h-12">
-                  <div className="absolute bottom-0 right-0 w-full h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
-                  <div className="absolute bottom-0 right-0 h-full w-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                <div className="absolute -bottom-1 -right-1 w-14 h-14">
+                  <div 
+                    className="absolute bottom-0 right-0 w-full h-2 bg-white rounded-full"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8)) drop-shadow(0 0 20px rgba(255,255,255,0.4))' }}
+                  />
+                  <div 
+                    className="absolute bottom-0 right-0 h-full w-2 bg-white rounded-full"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8)) drop-shadow(0 0 20px rgba(255,255,255,0.4))' }}
+                  />
                 </div>
                 
-                {/* Laser Scan Line */}
+                {/* Laser Scan Line - Emerald Green */}
                 <div 
-                  className="absolute inset-x-4 h-0.5 rounded-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+                  className="absolute inset-x-4 h-0.5 rounded-full bg-gradient-to-r from-transparent via-emerald-400 to-transparent"
                   style={{ 
                     animation: 'laserScan 2s ease-in-out infinite',
-                    boxShadow: '0 0 20px 4px rgba(34,211,238,0.6), 0 0 40px 8px rgba(34,211,238,0.3)',
+                    boxShadow: '0 0 12px 3px rgba(16,185,129,0.6), 0 0 30px 6px rgba(16,185,129,0.3)',
                   }} 
                 />
               </div>
               
               {/* Success Flash */}
               {scanSuccess && (
-                <div className="absolute inset-0 bg-cyan-500/30 animate-pulse" />
+                <div className="absolute inset-0 bg-emerald-500/30 animate-pulse" />
               )}
             </div>
             
-            {/* Floating Label Pill */}
+            {/* Floating Glass Pill Label */}
             <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20">
-              <div className="px-6 py-3 rounded-full bg-black/40 backdrop-blur-md border border-white/20">
-                <p className="text-white/90 text-sm font-medium text-center">
-                  Point camera at barcode
+              <div className="px-6 py-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
+                <p className="text-white/80 text-sm font-medium text-center tracking-wide">
+                  Point at barcode
                 </p>
               </div>
             </div>
@@ -321,9 +345,9 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
             {/* Manual Entry Button */}
             <button
               onClick={() => setShowManualEntry(true)}
-              className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 text-cyan-400 text-sm font-medium underline underline-offset-4 hover:text-cyan-300 transition-colors pointer-events-auto"
+              className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 text-zinc-500 text-sm font-medium underline underline-offset-4 hover:text-zinc-400 transition-colors pointer-events-auto"
             >
-              Enter Code Manually
+              Enter Manually
             </button>
           </>
         )}
