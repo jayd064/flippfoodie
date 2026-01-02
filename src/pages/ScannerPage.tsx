@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BarcodeScanner } from "@/components/scanner/BarcodeScanner";
 import { ScanResultOverlay } from "@/components/scanner/ScanResultOverlay";
+import { ShareToCommunityDrawer } from "@/components/scanner/ShareToCommunitDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,14 +18,14 @@ interface ProductPreview {
 }
 
 const ScannerPage = () => {
-  const [isScannerOpen, setIsScannerOpen] = useState(true); // Auto-open on mount
+  const [isScannerOpen, setIsScannerOpen] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
   const [showResultOverlay, setShowResultOverlay] = useState(false);
+  const [showShareDrawer, setShowShareDrawer] = useState(false);
   const [productPreview, setProductPreview] = useState<ProductPreview | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Auto-launch scanner when page mounts
   useEffect(() => {
     setIsScannerOpen(true);
   }, []);
@@ -94,6 +95,15 @@ const ScannerPage = () => {
     navigate("/");
   };
 
+  const handleShareClick = () => {
+    setShowShareDrawer(true);
+  };
+
+  const handleShareClose = () => {
+    setShowShareDrawer(false);
+    setShowResultOverlay(false);
+  };
+
   return (
     <>
       <BarcodeScanner
@@ -103,11 +113,20 @@ const ScannerPage = () => {
       />
 
       {productPreview && (
-        <ScanResultOverlay
-          isOpen={showResultOverlay}
-          onClose={handleResultClose}
-          product={productPreview}
-        />
+        <>
+          <ScanResultOverlay
+            isOpen={showResultOverlay}
+            onClose={handleResultClose}
+            onShare={handleShareClick}
+            product={productPreview}
+          />
+
+          <ShareToCommunityDrawer
+            isOpen={showShareDrawer}
+            onClose={handleShareClose}
+            product={productPreview}
+          />
+        </>
       )}
     </>
   );
