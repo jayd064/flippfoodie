@@ -1,206 +1,222 @@
 import { useState } from "react";
-import { Heart, Bookmark } from "lucide-react";
-import { cn } from "@/lib/utils";
+import SubsHeader from "@/components/community/SubsHeader";
+import FeedCard from "@/components/community/FeedCard";
+import CommentDrawer from "@/components/community/CommentDrawer";
+import MyStashGrid from "@/components/community/MyStashGrid";
 
-interface ScanPost {
+interface Post {
   id: string;
-  productName: string;
-  productImage: string;
-  healthScore: number;
+  image: string;
+  flag: "alert" | "review" | "safe";
+  flagLabel: string;
+  title: string;
+  caption: string;
   userName: string;
   userAvatar: string;
   likes: number;
+  comments: number;
   isLiked: boolean;
-  isSaved: boolean;
 }
 
-const mockPosts: ScanPost[] = [
+const mockPosts: Post[] = [
   {
     id: "1",
-    productName: "Lay's Classic Chips",
-    productImage: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&h=400&fit=crop",
-    healthScore: 35,
-    userName: "Jayesh_Foodie",
-    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=jayesh",
-    likes: 234,
+    image: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&h=750&fit=crop",
+    flag: "alert",
+    flagLabel: "Health Alert",
+    title: "Lay's Magic Masala: What They Don't Tell You",
+    caption: "High sodium content and MSG—this snack might taste great but here's why you should limit your intake. Breaking down the ingredients...",
+    userName: "HealthHunter",
+    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=health",
+    likes: 2340,
+    comments: 156,
     isLiked: false,
-    isSaved: false,
   },
   {
     id: "2",
-    productName: "Oreo Cookies",
-    productImage: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop",
-    healthScore: 28,
-    userName: "HealthyBites",
-    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=healthy",
-    likes: 567,
+    image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&h=750&fit=crop",
+    flag: "review",
+    flagLabel: "Review",
+    title: "Amul Butter vs Store Brands: The Truth",
+    caption: "I tested 5 different butter brands for taste, texture, and nutritional value. The results might surprise you!",
+    userName: "FoodScience",
+    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=food",
+    likes: 4521,
+    comments: 342,
     isLiked: true,
-    isSaved: false,
   },
   {
     id: "3",
-    productName: "Greek Yogurt",
-    productImage: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&h=400&fit=crop",
-    healthScore: 82,
-    userName: "FitFoodie",
-    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=fit",
-    likes: 892,
+    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=750&fit=crop",
+    flag: "safe",
+    flagLabel: "Approved",
+    title: "Greek Yogurt: The Perfect Protein Source",
+    caption: "High protein, low sugar, and great for gut health. Here's why this should be in your daily diet!",
+    userName: "NutriNinja",
+    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=nutri",
+    likes: 1892,
+    comments: 89,
     isLiked: false,
-    isSaved: true,
   },
   {
     id: "4",
-    productName: "Doritos Nacho Cheese",
-    productImage: "https://images.unsplash.com/photo-1600952841320-db92ec4047ca?w=400&h=400&fit=crop",
-    healthScore: 22,
-    userName: "SnackHunter",
+    image: "https://images.unsplash.com/photo-1600952841320-db92ec4047ca?w=600&h=750&fit=crop",
+    flag: "alert",
+    flagLabel: "Health Alert",
+    title: "Why Your Favorite Chips Are Addictive",
+    caption: "The science behind why you can't stop at just one. Understanding the flavor engineering in processed snacks.",
+    userName: "SnackScience",
     userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=snack",
-    likes: 1203,
+    likes: 3456,
+    comments: 267,
     isLiked: false,
-    isSaved: false,
-  },
-  {
-    id: "5",
-    productName: "Almonds Raw",
-    productImage: "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=400&h=400&fit=crop",
-    healthScore: 91,
-    userName: "NutriNinja",
-    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=nutri",
-    likes: 445,
-    isLiked: true,
-    isSaved: true,
   },
 ];
 
-const getScoreColor = (score: number) => {
-  if (score >= 70) return "from-emerald-500 to-green-400";
-  if (score >= 40) return "from-amber-500 to-yellow-400";
-  return "from-red-500 to-orange-400";
-};
-
-const getScoreEmoji = (score: number) => {
-  if (score >= 70) return "🐐";
-  if (score >= 40) return "😐";
-  return "🤨";
-};
-
-const ScanCard = ({ post, onLike, onSave }: { 
-  post: ScanPost; 
-  onLike: (id: string) => void;
-  onSave: (id: string) => void;
-}) => {
-  return (
-    <div className="relative w-full h-[calc(100vh-180px)] min-h-[500px] snap-start flex items-center justify-center bg-gradient-to-b from-background to-muted/30">
-      {/* Score Badge */}
-      <div className={cn(
-        "absolute top-6 right-6 z-20 flex flex-col items-center gap-1 px-4 py-3 rounded-2xl bg-gradient-to-br shadow-2xl",
-        getScoreColor(post.healthScore)
-      )}>
-        <span className="text-3xl font-black text-white drop-shadow-lg">
-          {post.healthScore}
-        </span>
-        <span className="text-lg">{getScoreEmoji(post.healthScore)}</span>
-      </div>
-
-      {/* Product Image */}
-      <div className="relative w-64 h-64 md:w-72 md:h-72 rounded-3xl overflow-hidden shadow-2xl ring-4 ring-white/20">
-        <img 
-          src={post.productImage} 
-          alt={post.productName}
-          className="w-full h-full object-cover"
-        />
-      </div>
-
-      {/* Product Name */}
-      <div className="absolute bottom-32 left-6 right-20">
-        <h2 className="text-xl font-bold text-foreground drop-shadow-lg">
-          {post.productName}
-        </h2>
-      </div>
-
-      {/* User Info */}
-      <div className="absolute bottom-20 left-6 flex items-center gap-3">
-        <img 
-          src={post.userAvatar} 
-          alt={post.userName}
-          className="w-10 h-10 rounded-full ring-2 ring-primary/50"
-        />
-        <span className="text-sm font-semibold text-foreground/80">
-          @{post.userName}
-        </span>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="absolute bottom-20 right-6 flex flex-col gap-4">
-        <button 
-          onClick={() => onLike(post.id)}
-          className="flex flex-col items-center gap-1 transition-transform active:scale-90"
-        >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center transition-all",
-            post.isLiked 
-              ? "bg-red-500 text-white" 
-              : "bg-muted/80 text-foreground hover:bg-muted"
-          )}>
-            <Heart className={cn("w-6 h-6", post.isLiked && "fill-current")} />
-          </div>
-          <span className="text-xs font-medium text-muted-foreground">
-            {post.likes + (post.isLiked ? 1 : 0)}
-          </span>
-        </button>
-
-        <button 
-          onClick={() => onSave(post.id)}
-          className="flex flex-col items-center gap-1 transition-transform active:scale-90"
-        >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center transition-all",
-            post.isSaved 
-              ? "bg-primary text-primary-foreground" 
-              : "bg-muted/80 text-foreground hover:bg-muted"
-          )}>
-            <Bookmark className={cn("w-6 h-6", post.isSaved && "fill-current")} />
-          </div>
-          <span className="text-xs font-medium text-muted-foreground">Save</span>
-        </button>
-      </div>
-    </div>
-  );
-};
+const mockComments = [
+  {
+    id: "c1",
+    userName: "HealthyEater",
+    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=c1",
+    text: "This is so eye-opening! I had no idea about the sodium levels. Going to check all my snacks now.",
+    votes: 45,
+    userVote: null as "up" | "down" | null,
+    timeAgo: "2h",
+    replies: [
+      {
+        id: "c1r1",
+        userName: "NutriExpert",
+        userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=c1r1",
+        text: "The daily recommended sodium is about 2300mg. One serving of these chips has 170mg!",
+        votes: 23,
+        userVote: null as "up" | "down" | null,
+        timeAgo: "1h",
+      },
+    ],
+  },
+  {
+    id: "c2",
+    userName: "SkepticalSam",
+    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=c2",
+    text: "I mean, everything in moderation right? Not everything needs to be a 'health alert'.",
+    votes: 12,
+    userVote: null as "up" | "down" | null,
+    timeAgo: "3h",
+    replies: [
+      {
+        id: "c2r1",
+        userName: "BalancedView",
+        userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=c2r1",
+        text: "That's fair, but awareness helps people make informed choices. Knowledge is power!",
+        votes: 8,
+        userVote: null as "up" | "down" | null,
+        timeAgo: "2h",
+      },
+    ],
+  },
+  {
+    id: "c3",
+    userName: "ChipLover",
+    userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=c3",
+    text: "Any good alternatives that taste similar but are healthier?",
+    votes: 67,
+    userVote: "up" as "up" | "down" | null,
+    timeAgo: "4h",
+  },
+];
 
 const CommunityFeedPage = () => {
-  const [posts, setPosts] = useState<ScanPost[]>(mockPosts);
+  const [activeTab, setActiveTab] = useState<"discover" | "stash">("discover");
+  const [activeTribe, setActiveTribe] = useState<string | null>(null);
+  const [posts, setPosts] = useState<Post[]>(mockPosts);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [comments, setComments] = useState(mockComments);
+  const [brands, setBrands] = useState([
+    { id: "1", name: "Amul", logo: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop", followerCount: 12400, isFollowing: true },
+    { id: "2", name: "Nestle", logo: "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=200&h=200&fit=crop", followerCount: 8900, isFollowing: true },
+    { id: "3", name: "Parle", logo: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=200&h=200&fit=crop", followerCount: 6700, isFollowing: true },
+    { id: "4", name: "Britannia", logo: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=200&h=200&fit=crop", followerCount: 5400, isFollowing: true },
+    { id: "5", name: "Haldiram's", logo: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=200&h=200&fit=crop", followerCount: 4200, isFollowing: true },
+    { id: "6", name: "MTR", logo: "https://images.unsplash.com/photo-1596797038530-2c107229654b?w=200&h=200&fit=crop", followerCount: 3100, isFollowing: true },
+  ]);
 
   const handleLike = (id: string) => {
-    setPosts(prev => prev.map(post => 
-      post.id === id ? { ...post, isLiked: !post.isLiked } : post
-    ));
+    setPosts((prev) =>
+      prev.map((post) =>
+        post.id === id ? { ...post, isLiked: !post.isLiked } : post
+      )
+    );
   };
 
-  const handleSave = (id: string) => {
-    setPosts(prev => prev.map(post => 
-      post.id === id ? { ...post, isSaved: !post.isSaved } : post
-    ));
+  const handleComment = (id: string) => {
+    setSelectedPostId(id);
   };
+
+  const handleShare = (id: string) => {
+    // Share logic
+    console.log("Share post:", id);
+  };
+
+  const handleVote = (commentId: string, vote: "up" | "down") => {
+    const updateVotes = (commentsList: typeof comments): typeof comments => {
+      return commentsList.map((c) => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            userVote: c.userVote === vote ? null : vote,
+          };
+        }
+        if (c.replies) {
+          return { ...c, replies: updateVotes(c.replies) };
+        }
+        return c;
+      });
+    };
+    setComments(updateVotes(comments));
+  };
+
+  const handleToggleFollow = (id: string) => {
+    setBrands((prev) =>
+      prev.map((brand) =>
+        brand.id === id ? { ...brand, isFollowing: !brand.isFollowing } : brand
+      )
+    );
+  };
+
+  const selectedPost = posts.find((p) => p.id === selectedPostId);
 
   return (
-    <div className="h-full overflow-y-scroll snap-y snap-mandatory scroll-smooth pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50 px-6 py-4">
-        <h1 className="text-xl font-bold text-center">Community Feed</h1>
-      </div>
+    <div className="min-h-screen bg-[#0a0a0a] pb-32">
+      <SubsHeader
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        activeTribe={activeTribe}
+        onTribeChange={setActiveTribe}
+      />
 
-      {/* Feed */}
-      <div className="flex flex-col">
-        {posts.map((post) => (
-          <ScanCard 
-            key={post.id} 
-            post={post} 
-            onLike={handleLike}
-            onSave={handleSave}
-          />
-        ))}
-      </div>
+      {activeTab === "discover" ? (
+        <div className="px-4 pt-4">
+          {posts.map((post) => (
+            <FeedCard
+              key={post.id}
+              post={post}
+              onLike={handleLike}
+              onComment={handleComment}
+              onShare={handleShare}
+            />
+          ))}
+        </div>
+      ) : (
+        <MyStashGrid brands={brands} onToggleFollow={handleToggleFollow} />
+      )}
+
+      <CommentDrawer
+        isOpen={!!selectedPostId}
+        onClose={() => setSelectedPostId(null)}
+        postTitle={selectedPost?.title || ""}
+        comments={comments}
+        onVote={handleVote}
+      />
     </div>
   );
 };
