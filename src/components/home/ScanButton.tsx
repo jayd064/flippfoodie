@@ -2,12 +2,26 @@ import { useState, useCallback } from "react";
 import { Camera } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BarcodeScanner } from "@/components/scanner/BarcodeScanner";
+import { ScanResultOverlay } from "@/components/scanner/ScanResultOverlay";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+interface ProductPreview {
+  name: string;
+  brand?: string;
+  image?: string;
+  score: number;
+  ingredients?: string;
+  negativePoints?: string[];
+  positivePoints?: string[];
+  barcode: string;
+}
 
 export const ScanButton = () => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [showResultOverlay, setShowResultOverlay] = useState(false);
+  const [productPreview, setProductPreview] = useState<ProductPreview | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -21,7 +35,7 @@ export const ScanButton = () => {
       // Check if product exists in database
       const { data: product, error } = await supabase
         .from("products")
-        .select("barcode")
+        .select("*")
         .eq("barcode", barcode)
         .maybeSingle();
 
@@ -30,8 +44,21 @@ export const ScanButton = () => {
         throw error;
       }
 
-      if (product) {
-        // Product exists, navigate to product page
+      if (product && product.health_score !== null) {
+        // Product exists with score, show AR overlay
+        setProductPreview({
+          name: product.name,
+          brand: product.brand || undefined,
+          image: product.front_image_url || undefined,
+          score: product.health_score,
+          ingredients: product.ingredients_text || undefined,
+          negativePoints: product.negative_points || undefined,
+          positivePoints: product.positive_points || undefined,
+          barcode: product.barcode,
+        });
+        setShowResultOverlay(true);
+      } else if (product) {
+        // Product exists but no score yet
         toast({
           title: "Product Found!",
           description: "Loading product details...",
@@ -56,6 +83,13 @@ export const ScanButton = () => {
       setIsChecking(false);
     }
   }, [navigate, toast]);
+
+  const handleResultClose = () => {
+    setShowResultOverlay(false);
+    if (productPreview) {
+      navigate(`/product/${productPreview.barcode}`);
+    }
+  };
 
   return (
     <>
@@ -90,6 +124,14 @@ export const ScanButton = () => {
         onClose={() => setIsScannerOpen(false)}
         onScan={handleScan}
       />
+
+      {productPreview && (
+        <ScanResultOverlay
+          isOpen={showResultOverlay}
+          onClose={handleResultClose}
+          product={productPreview}
+        />
+      )}
     </>
   );
 };
