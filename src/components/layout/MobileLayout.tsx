@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { BottomNav } from "./BottomNav";
+import { GlassDock } from "./GlassDock";
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -8,10 +8,10 @@ interface MobileLayoutProps {
 export const MobileLayout = ({ children }: MobileLayoutProps) => {
   return (
     <div className="min-h-screen bg-background">
-      <main className="pb-24 max-w-md mx-auto">
+      <main className="pb-32 max-w-md mx-auto">
         {children}
       </main>
-      <BottomNav />
+      <GlassDock />
     </div>
   );
 };

@@ -11,6 +11,7 @@ import HistoryPage from "./pages/HistoryPage";
 import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
 import CommunityFeedPage from "./pages/CommunityFeedPage";
+import ScannerPage from "./pages/ScannerPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,8 @@ const App = () => (
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/feed" element={<CommunityFeedPage />} />
+            <Route path="/scan" element={<ScannerPage />} />
+            <Route path="/search" element={<Index />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </MobileLayout>

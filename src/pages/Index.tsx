@@ -1,14 +1,16 @@
-import { ScanButton } from "@/components/home/ScanButton";
-import { TrendingScans } from "@/components/home/TrendingScans";
+import { SearchBar } from "@/components/home/SearchBar";
+import { SpotlightCarousel } from "@/components/home/SpotlightCarousel";
+import { Categories } from "@/components/home/Categories";
+import { TrendingDiscussions } from "@/components/home/TrendingDiscussions";
 import { Sparkles } from "lucide-react";
 
 const Index = () => {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-28">
       {/* Header */}
       <header className="px-5 pt-12 pb-6 animate-fade-up">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-primary/10">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10">
             <Sparkles className="w-6 h-6 text-primary" />
           </div>
           <div>
@@ -18,26 +20,27 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex flex-col items-center pt-8">
-        <ScanButton />
+      {/* Search Bar */}
+      <div className="px-5 mb-6 animate-fade-up animation-delay-100">
+        <SearchBar />
       </div>
 
-      {/* Trending Section */}
-      <TrendingScans />
-
-      {/* Quick Stats */}
-      <section className="px-5 mt-8 animate-fade-up animation-delay-300">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-card rounded-2xl p-4 border border-border/50 shadow-soft">
-            <p className="text-3xl font-bold text-primary">12</p>
-            <p className="text-sm text-muted-foreground mt-1">Products scanned</p>
-          </div>
-          <div className="bg-card rounded-2xl p-4 border border-border/50 shadow-soft">
-            <p className="text-3xl font-bold text-foreground">5</p>
-            <p className="text-sm text-muted-foreground mt-1">Better choices made</p>
-          </div>
+      {/* Spotlight Carousel */}
+      <section className="mb-8 animate-fade-up animation-delay-200">
+        <div className="px-5 mb-4">
+          <h2 className="text-lg font-semibold text-foreground">The Spotlight</h2>
         </div>
+        <SpotlightCarousel />
+      </section>
+
+      {/* Categories */}
+      <section className="mb-8 animate-fade-up animation-delay-300">
+        <Categories />
+      </section>
+
+      {/* Trending Discussions */}
+      <section className="animate-fade-up animation-delay-300">
+        <TrendingDiscussions />
       </section>
     </div>
   );
