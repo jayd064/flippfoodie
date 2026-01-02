@@ -25,7 +25,7 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
     if (scannerRef.current) {
       try {
         const state = scannerRef.current.getState();
-        if (state === 2) { // SCANNING state
+        if (state === 2) {
           await scannerRef.current.stop();
         }
         scannerRef.current.clear();
@@ -37,11 +37,9 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
   }, []);
 
   const triggerSuccessFeedback = useCallback(() => {
-    // Vibrate if supported
     if (navigator.vibrate) {
       navigator.vibrate(200);
     }
-    // Visual feedback
     setScanSuccess(true);
     setTimeout(() => setScanSuccess(false), 500);
   }, []);
@@ -53,7 +51,6 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
     console.log("Barcode detected:", decodedText);
     triggerSuccessFeedback();
     
-    // Small delay to show success feedback before closing
     setTimeout(() => {
       onScan(decodedText);
       stopScanner();
@@ -66,7 +63,7 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
     try {
       const newTorchState = !torchOn;
       await scannerRef.current.applyVideoConstraints({
-        // @ts-ignore - torch is a valid constraint but not in types
+        // @ts-ignore
         advanced: [{ torch: newTorchState }]
       });
       setTorchOn(newTorchState);
@@ -89,19 +86,17 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
       setError(null);
       hasScannedRef.current = false;
 
-      // Wait for DOM element to be ready
       await new Promise(resolve => setTimeout(resolve, 100));
 
       try {
         const scanner = new Html5Qrcode("barcode-scanner");
         scannerRef.current = scanner;
 
-        // 720p resolution for mobile optimization
         await scanner.start(
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 280, height: 120 },
+            qrbox: { width: 280, height: 140 },
             aspectRatio: 1.0,
             disableFlip: false,
             videoConstraints: {
@@ -111,21 +106,16 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
             }
           },
           handleSuccessfulScan,
-          () => {
-            // Ignore scan errors during active scanning
-          }
+          () => {}
         );
 
-        // Check if torch is supported
         try {
           const capabilities = scanner.getRunningTrackCapabilities();
-          // @ts-ignore - torch may exist in capabilities
+          // @ts-ignore
           if (capabilities && capabilities.torch) {
             setTorchSupported(true);
           }
-        } catch {
-          // Torch not supported
-        }
+        } catch {}
 
         setIsStarting(false);
       } catch (err) {
@@ -158,18 +148,18 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 z-50 bg-background transition-colors duration-300 ${scanSuccess ? 'bg-primary/20' : ''}`}>
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-12 z-10 bg-gradient-to-b from-background to-transparent">
-        <h2 className="text-lg font-semibold text-foreground">Scan Barcode</h2>
+    <div className={`fixed inset-0 z-50 bg-black transition-colors duration-300 ${scanSuccess ? 'bg-primary/20' : ''}`}>
+      {/* HUD Header */}
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-12 z-20">
+        <h2 className="text-lg font-bold text-white tracking-wide drop-shadow-lg">SCAN MODE</h2>
         <div className="flex items-center gap-2">
           {torchSupported && (
             <button
               onClick={toggleTorch}
-              className={`p-2.5 rounded-full backdrop-blur-sm border shadow-soft transition-colors ${
+              className={`p-3 rounded-full backdrop-blur-md border transition-all ${
                 torchOn 
-                  ? 'bg-primary text-primary-foreground border-primary' 
-                  : 'bg-card/90 border-border/50 hover:bg-card'
+                  ? 'bg-cyan-500/30 text-cyan-400 border-cyan-500/50 shadow-[0_0_20px_rgba(34,211,238,0.4)]' 
+                  : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
               }`}
             >
               <Flashlight className="w-5 h-5" />
@@ -177,121 +167,161 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
           )}
           <button
             onClick={handleClose}
-            className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors"
+            className="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-colors"
           >
-            <X className="w-5 h-5 text-foreground" />
+            <X className="w-5 h-5 text-white" />
           </button>
         </div>
       </div>
 
-      {/* Scanner Area */}
-      <div className="h-full flex flex-col items-center justify-center px-5">
+      {/* Scanner Area - Full Screen */}
+      <div className="h-full w-full relative">
         {showManualEntry ? (
-          <div className="w-full max-w-sm space-y-4">
-            <div className="text-center space-y-2">
-              <Keyboard className="w-12 h-12 text-primary mx-auto" />
-              <h3 className="text-lg font-semibold text-foreground">Enter Barcode Manually</h3>
-              <p className="text-sm text-muted-foreground">Type the numbers below the barcode</p>
-            </div>
-            <Input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="e.g., 8901234567890"
-              value={manualBarcode}
-              onChange={(e) => setManualBarcode(e.target.value.replace(/[^0-9]/g, ''))}
-              className="text-center text-lg tracking-widest"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowManualEntry(false)}
-              >
-                Back to Camera
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={handleManualSubmit}
-                disabled={manualBarcode.length < 8}
-              >
-                Search
-              </Button>
+          <div className="absolute inset-0 flex items-center justify-center p-5 bg-black/90 z-30">
+            <div className="w-full max-w-sm space-y-4">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(34,211,238,0.3)]">
+                  <Keyboard className="w-8 h-8 text-cyan-400" />
+                </div>
+                <h3 className="text-lg font-bold text-white">MANUAL ENTRY</h3>
+                <p className="text-sm text-white/60">Enter the barcode numbers</p>
+              </div>
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="e.g., 8901234567890"
+                value={manualBarcode}
+                onChange={(e) => setManualBarcode(e.target.value.replace(/[^0-9]/g, ''))}
+                className="text-center text-lg tracking-widest bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                autoFocus
+              />
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  onClick={() => setShowManualEntry(false)}
+                >
+                  Back to Camera
+                </Button>
+                <Button
+                  className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-black font-bold"
+                  onClick={handleManualSubmit}
+                  disabled={manualBarcode.length < 8}
+                >
+                  Search
+                </Button>
+              </div>
             </div>
           </div>
         ) : error ? (
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-              <AlertCircle className="w-8 h-8 text-destructive" />
-            </div>
-            <p className="text-muted-foreground max-w-xs">{error}</p>
-            <div className="flex flex-col gap-2">
-              <Button onClick={() => setShowManualEntry(true)} variant="default">
-                Enter Code Manually
-              </Button>
-              <Button onClick={handleClose} variant="outline">
-                Go Back
-              </Button>
+          <div className="absolute inset-0 flex items-center justify-center p-5 bg-black/90 z-30">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+                <AlertCircle className="w-8 h-8 text-red-400" />
+              </div>
+              <p className="text-white/60 max-w-xs">{error}</p>
+              <div className="flex flex-col gap-2">
+                <Button 
+                  onClick={() => setShowManualEntry(true)} 
+                  className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold"
+                >
+                  Enter Code Manually
+                </Button>
+                <Button 
+                  onClick={handleClose} 
+                  variant="outline"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  Go Back
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
           <>
-            <div className="relative w-full max-w-sm aspect-square rounded-2xl overflow-hidden bg-muted">
-              {isStarting && (
-                <div className="absolute inset-0 flex items-center justify-center bg-muted z-10">
-                  <div className="text-center space-y-3">
-                    <Camera className="w-12 h-12 text-primary animate-pulse mx-auto" />
-                    <p className="text-muted-foreground text-sm">Starting camera...</p>
+            {/* Camera Feed */}
+            <div id="barcode-scanner" className="w-full h-full" />
+            
+            {/* Loading State */}
+            {isStarting && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black z-20">
+                <div className="text-center space-y-4">
+                  <div className="w-20 h-20 rounded-full bg-cyan-500/20 border-2 border-cyan-500/40 flex items-center justify-center mx-auto animate-pulse shadow-[0_0_40px_rgba(34,211,238,0.4)]">
+                    <Camera className="w-10 h-10 text-cyan-400" />
                   </div>
-                </div>
-              )}
-              <div id="barcode-scanner" className="w-full h-full" />
-              
-              {/* Scanning overlay with corner guides */}
-              <div className="absolute inset-0 pointer-events-none">
-                {/* Darkened areas */}
-                <div className="absolute inset-0 bg-background/40" />
-                
-                {/* Clear center area */}
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-28 bg-transparent" 
-                     style={{ boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' }} />
-                
-                {/* Corner guides */}
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-28">
-                  {/* Top-left corner */}
-                  <div className={`absolute -top-1 -left-1 w-8 h-8 border-l-4 border-t-4 rounded-tl-lg transition-colors duration-200 ${scanSuccess ? 'border-primary' : 'border-primary/80'}`} />
-                  {/* Top-right corner */}
-                  <div className={`absolute -top-1 -right-1 w-8 h-8 border-r-4 border-t-4 rounded-tr-lg transition-colors duration-200 ${scanSuccess ? 'border-primary' : 'border-primary/80'}`} />
-                  {/* Bottom-left corner */}
-                  <div className={`absolute -bottom-1 -left-1 w-8 h-8 border-l-4 border-b-4 rounded-bl-lg transition-colors duration-200 ${scanSuccess ? 'border-primary' : 'border-primary/80'}`} />
-                  {/* Bottom-right corner */}
-                  <div className={`absolute -bottom-1 -right-1 w-8 h-8 border-r-4 border-b-4 rounded-br-lg transition-colors duration-200 ${scanSuccess ? 'border-primary' : 'border-primary/80'}`} />
-                  
-                  {/* Laser line animation */}
-                  <div 
-                    className="absolute inset-x-2 h-0.5 bg-red-500 shadow-[0_0_8px_2px_rgba(239,68,68,0.6)]"
-                    style={{ 
-                      animation: 'laserScan 2s ease-in-out infinite',
-                    }} 
-                  />
+                  <p className="text-white/60 text-sm tracking-wider">INITIALIZING CAMERA...</p>
                 </div>
               </div>
-
-              {/* Success flash overlay */}
+            )}
+            
+            {/* HUD Overlay */}
+            <div className="absolute inset-0 pointer-events-none z-10">
+              {/* Dark overlay with cutout */}
+              <div className="absolute inset-0">
+                {/* Top dark area */}
+                <div className="absolute top-0 left-0 right-0 h-[calc(50%-80px)] bg-black/70" />
+                {/* Bottom dark area */}
+                <div className="absolute bottom-0 left-0 right-0 h-[calc(50%-80px)] bg-black/70" />
+                {/* Left dark area */}
+                <div className="absolute top-[calc(50%-80px)] left-0 w-[calc(50%-140px)] h-[160px] bg-black/70" />
+                {/* Right dark area */}
+                <div className="absolute top-[calc(50%-80px)] right-0 w-[calc(50%-140px)] h-[160px] bg-black/70" />
+              </div>
+              
+              {/* Scan Frame with Corner Brackets */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[160px]">
+                {/* Corner Brackets */}
+                {/* Top-left */}
+                <div className="absolute -top-1 -left-1 w-12 h-12">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                  <div className="absolute top-0 left-0 h-full w-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                </div>
+                {/* Top-right */}
+                <div className="absolute -top-1 -right-1 w-12 h-12">
+                  <div className="absolute top-0 right-0 w-full h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                  <div className="absolute top-0 right-0 h-full w-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                </div>
+                {/* Bottom-left */}
+                <div className="absolute -bottom-1 -left-1 w-12 h-12">
+                  <div className="absolute bottom-0 left-0 w-full h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                  <div className="absolute bottom-0 left-0 h-full w-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                </div>
+                {/* Bottom-right */}
+                <div className="absolute -bottom-1 -right-1 w-12 h-12">
+                  <div className="absolute bottom-0 right-0 w-full h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                  <div className="absolute bottom-0 right-0 h-full w-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                </div>
+                
+                {/* Laser Scan Line */}
+                <div 
+                  className="absolute inset-x-4 h-0.5 rounded-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+                  style={{ 
+                    animation: 'laserScan 2s ease-in-out infinite',
+                    boxShadow: '0 0 20px 4px rgba(34,211,238,0.6), 0 0 40px 8px rgba(34,211,238,0.3)',
+                  }} 
+                />
+              </div>
+              
+              {/* Success Flash */}
               {scanSuccess && (
-                <div className="absolute inset-0 bg-primary/30 animate-pulse z-20" />
+                <div className="absolute inset-0 bg-cyan-500/30 animate-pulse" />
               )}
             </div>
             
-            <p className="text-muted-foreground text-sm text-center mt-6 max-w-xs">
-              Position the barcode within the frame — it will scan automatically
-            </p>
+            {/* Floating Label Pill */}
+            <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20">
+              <div className="px-6 py-3 rounded-full bg-black/40 backdrop-blur-md border border-white/20">
+                <p className="text-white/90 text-sm font-medium text-center">
+                  Point camera at barcode
+                </p>
+              </div>
+            </div>
 
-            {/* Manual entry button */}
+            {/* Manual Entry Button */}
             <button
               onClick={() => setShowManualEntry(true)}
-              className="mt-4 text-primary text-sm font-medium underline underline-offset-2 hover:text-primary/80 transition-colors"
+              className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 text-cyan-400 text-sm font-medium underline underline-offset-4 hover:text-cyan-300 transition-colors pointer-events-auto"
             >
               Enter Code Manually
             </button>
@@ -302,8 +332,8 @@ export const BarcodeScanner = ({ isOpen, onClose, onScan }: BarcodeScannerProps)
       {/* Laser animation keyframes */}
       <style>{`
         @keyframes laserScan {
-          0%, 100% { top: 0; }
-          50% { top: calc(100% - 2px); }
+          0%, 100% { top: 8px; }
+          50% { top: calc(100% - 10px); }
         }
       `}</style>
     </div>
