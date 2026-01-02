@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronUp, Flame, Leaf, Skull, Shield, X } from "lucide-react";
+import { ChevronUp, Flame, Leaf, Skull, Shield, X, Share2 } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -11,6 +11,7 @@ import {
 interface ScanResultOverlayProps {
   isOpen: boolean;
   onClose: () => void;
+  onShare?: () => void;
   product: {
     name: string;
     brand?: string;
@@ -26,6 +27,7 @@ interface ScanResultOverlayProps {
 export const ScanResultOverlay = ({
   isOpen,
   onClose,
+  onShare,
   product,
   capturedFrame,
 }: ScanResultOverlayProps) => {
@@ -169,6 +171,20 @@ export const ScanResultOverlay = ({
                 </div>
               </div>
             </div>
+
+            {/* Share to Community Button */}
+            {onShare && (
+              <button
+                onClick={onShare}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold hover:bg-emerald-500/20 transition-all"
+                style={{
+                  boxShadow: "0 0 20px rgba(16,185,129,0.2)",
+                }}
+              >
+                <Share2 className="w-5 h-5" />
+                Share to Community
+              </button>
+            )}
 
             {/* Bouncing Chevron - Drawer Trigger */}
             <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
