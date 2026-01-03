@@ -2,19 +2,28 @@ import { useState } from "react";
 import { Trophy, ShoppingBag, Building2, Users, Crown, Share2, ExternalLink, AlertTriangle, Star, TrendingUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { getVillains, getHeroes, products } from "@/data/GlobalStore";
 
-// Mock data for rankings
-const guiltyGems = [
-  { id: 1, name: "Maggi 2-Minute Noodles", brand: "Nestle", score: 28, scans: 15420, image: "https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?w=100&h=100&fit=crop" },
-  { id: 2, name: "Lays Classic", brand: "PepsiCo", score: 32, scans: 12350, image: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=100&h=100&fit=crop" },
-  { id: 3, name: "Frooti Mango", brand: "Parle Agro", score: 25, scans: 9870, image: "https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=100&h=100&fit=crop" },
-];
+// Get real products from GlobalStore
+const guiltyGems = getVillains().slice(0, 5).map((p, idx) => ({
+  id: p.id,
+  name: p.name,
+  brand: p.brand,
+  score: p.healthScore,
+  scans: Math.floor(Math.random() * 15000) + 5000,
+  image: p.image,
+  affiliateUrl: p.affiliateUrl,
+}));
 
-const heroSwaps = [
-  { id: 1, name: "Yoga Bar Muesli", brand: "Yoga Bar", score: 85, price: "₹349", affiliateUrl: "#", image: "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?w=100&h=100&fit=crop" },
-  { id: 2, name: "Too Yumm Veggie Stix", brand: "RP-SG", score: 78, price: "₹30", affiliateUrl: "#", image: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=100&h=100&fit=crop" },
-  { id: 3, name: "Raw Pressery Juice", brand: "Raw Pressery", score: 82, price: "₹120", affiliateUrl: "#", image: "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=100&h=100&fit=crop" },
-];
+const heroSwaps = getHeroes().slice(0, 5).map((p) => ({
+  id: p.id,
+  name: p.name,
+  brand: p.brand,
+  score: p.healthScore,
+  affiliateUrl: p.affiliateUrl,
+  image: p.image,
+}));
 
 const silentSwitches = [
   { id: 1, brand: "Nestle", product: "Maggi Masala", change: "Added more MSG", date: "2 weeks ago", severity: "warning" },
@@ -24,9 +33,9 @@ const silentSwitches = [
 const topBrands = [
   { id: 1, name: "Amul", avgScore: 72, products: 45, trend: "+3" },
   { id: 2, name: "Mother Dairy", avgScore: 68, products: 32, trend: "+1" },
-  { id: 3, name: "Patanjali", avgScore: 65, products: 120, trend: "-2" },
-  { id: 4, name: "Nestle", avgScore: 45, products: 89, trend: "0" },
-  { id: 5, name: "Parle", avgScore: 42, products: 67, trend: "-1" },
+  { id: 3, name: "The Whole Truth", avgScore: 85, products: 12, trend: "+5" },
+  { id: 4, name: "Nestle", avgScore: 35, products: 89, trend: "-2" },
+  { id: 5, name: "PepsiCo", avgScore: 28, products: 67, trend: "-1" },
 ];
 
 const topDetectives = [
@@ -109,7 +118,9 @@ const RankingsPage = () => {
               {guiltyGems.map((product, idx) => (
                 <div key={product.id} className="flex items-center gap-3 p-3 bg-card/50 rounded-xl border border-border/30">
                   <span className="text-lg font-bold text-muted-foreground w-6">#{idx + 1}</span>
-                  <img src={product.image} alt={product.name} className="w-12 h-12 rounded-lg object-cover" />
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-border/30 flex-shrink-0">
+                    <img src={product.image} alt={product.name} className="w-full h-full object-contain p-0.5" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground text-sm truncate">{product.name}</p>
                     <p className="text-xs text-muted-foreground">{product.brand} • {product.scans.toLocaleString()} scans</p>
@@ -131,7 +142,9 @@ const RankingsPage = () => {
             <div className="space-y-2">
               {heroSwaps.map((product) => (
                 <div key={product.id} className="flex items-center gap-3 p-3 bg-card/50 rounded-xl border border-border/30">
-                  <img src={product.image} alt={product.name} className="w-12 h-12 rounded-lg object-cover" />
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-border/30 flex-shrink-0">
+                    <img src={product.image} alt={product.name} className="w-full h-full object-contain p-0.5" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground text-sm truncate">{product.name}</p>
                     <p className="text-xs text-muted-foreground">{product.brand}</p>
@@ -139,9 +152,16 @@ const RankingsPage = () => {
                   <div className={`px-2.5 py-1 rounded-lg text-xs font-bold ${getScoreColor(product.score)}`}>
                     {product.score}
                   </div>
-                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-xs h-8 px-3">
+                  <Button 
+                    size="sm" 
+                    className="bg-score-good hover:bg-score-good/90 text-xs h-8 px-3"
+                    onClick={() => {
+                      toast.success("Opening Amazon...", { description: `Redirecting to ${product.name}` });
+                      setTimeout(() => window.open(product.affiliateUrl, "_blank"), 1000);
+                    }}
+                  >
                     <ExternalLink className="w-3 h-3 mr-1" />
-                    {product.price}
+                    Buy
                   </Button>
                 </div>
               ))}
