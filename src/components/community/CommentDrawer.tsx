@@ -20,6 +20,7 @@ interface CommentDrawerProps {
   postTitle: string;
   comments: Comment[];
   onVote: (commentId: string, vote: "up" | "down") => void;
+  onAddComment: (text: string) => void;
 }
 
 const CommentItem = ({
@@ -125,6 +126,7 @@ const CommentDrawer = ({
   postTitle,
   comments,
   onVote,
+  onAddComment,
 }: CommentDrawerProps) => {
   const [newComment, setNewComment] = useState("");
 
@@ -132,6 +134,13 @@ const CommentDrawer = ({
     (acc, c) => acc + 1 + (c.replies?.length || 0),
     0
   );
+
+  const handleSubmit = () => {
+    if (newComment.trim()) {
+      onAddComment(newComment.trim());
+      setNewComment("");
+    }
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -169,9 +178,13 @@ const CommentDrawer = ({
               placeholder="Add a comment..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               className="flex-1 h-12 px-4 bg-[#151515] border border-white/10 rounded-full text-white placeholder:text-zinc-500 focus:outline-none focus:border-white/20 transition-colors"
             />
-            <button className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center hover:bg-emerald-400 transition-colors">
+            <button 
+              onClick={handleSubmit}
+              className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center hover:bg-emerald-400 transition-colors"
+            >
               <Send className="w-5 h-5 text-black" />
             </button>
           </div>

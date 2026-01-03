@@ -1,11 +1,11 @@
-import { Heart, MessageCircle, Share2, TriangleAlert, Star, Shield } from "lucide-react";
+import { Heart, MessageCircle, Share2, TriangleAlert, Star, Shield, HelpCircle, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FeedCardProps {
   post: {
     id: string;
     image: string;
-    flag: "alert" | "review" | "safe";
+    flag: "alert" | "review" | "safe" | "question" | "rant";
     flagLabel: string;
     title: string;
     caption: string;
@@ -38,6 +38,18 @@ const flagStyles = {
     text: "text-emerald-400",
     glow: "shadow-[0_0_20px_rgba(16,185,129,0.3)]",
     icon: Shield,
+  },
+  question: {
+    bg: "bg-black/50 border-blue-500/50",
+    text: "text-blue-400",
+    glow: "shadow-[0_0_20px_rgba(59,130,246,0.3)]",
+    icon: HelpCircle,
+  },
+  rant: {
+    bg: "bg-black/50 border-orange-500/50",
+    text: "text-orange-400",
+    glow: "shadow-[0_0_20px_rgba(249,115,22,0.3)]",
+    icon: Flame,
   },
 };
 
