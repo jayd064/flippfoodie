@@ -1,9 +1,12 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Shield, Skull } from "lucide-react";
 import { toast } from "sonner";
-import { getProductsByCategory, categoryMeta, Product, getHeroSwap } from "@/data/GlobalStore";
+import { getProductsByCategory, categoryMeta, Product } from "@/data/GlobalStore";
+import { getAffiliateLink, AMAZON_DISCLAIMER } from "@/lib/linkUtils";
+import { useAdmin } from "@/contexts/AdminContext";
 
 const CategoryViewPage = () => {
+  const { getLinkOverride } = useAdmin();
   const { category } = useParams<{ category: string }>();
   const navigate = useNavigate();
   
@@ -23,12 +26,15 @@ const CategoryViewPage = () => {
   };
 
   const handleGetProduct = (product: Product) => {
+    const adminOverride = getLinkOverride(product.name);
+    const affiliateLink = getAffiliateLink(product.name, product.affiliateUrl, adminOverride);
+    
     toast.success("Opening Amazon...", {
       description: `Redirecting to ${product.name}`,
       duration: 2000,
     });
     setTimeout(() => {
-      window.open(product.affiliateUrl, "_blank");
+      window.open(affiliateLink, "_blank");
     }, 1000);
   };
 
@@ -143,6 +149,15 @@ const CategoryViewPage = () => {
           </div>
         ))}
       </div>
+
+      {/* Amazon Disclaimer */}
+      {products.length > 0 && (
+        <div className="px-5 py-4">
+          <p className="text-[10px] text-muted-foreground text-center opacity-70">
+            {AMAZON_DISCLAIMER}
+          </p>
+        </div>
+      )}
 
       {/* Empty State */}
       {products.length === 0 && (

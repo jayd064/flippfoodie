@@ -8,6 +8,7 @@ import {
   Sparkles,
   Clock,
   RotateCcw,
+  ExternalLink,
 } from "lucide-react";
 import { TikTokHeader } from "@/components/product/TikTokHeader";
 import { VillainsSection } from "@/components/product/VillainsSection";
@@ -17,6 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import html2canvas from "html2canvas";
 import { products, getHeroSwap, Product } from "@/data/GlobalStore";
+import { getAffiliateLink, AMAZON_DISCLAIMER } from "@/lib/linkUtils";
+import { useAdmin } from "@/contexts/AdminContext";
 
 const guiltyMemes = [
   "https://media.giphy.com/media/3o7TKnO6Wve6502iJ2/giphy.mp4",
@@ -58,6 +61,7 @@ const ProductPage = () => {
   const [searchParams] = useSearchParams();
   const isAnalyzing = searchParams.get("analyzing") === "true";
   const queryClient = useQueryClient();
+  const { getLinkOverride } = useAdmin();
   
   const [showSpinner, setShowSpinner] = useState(true);
   const [revealedScore, setRevealedScore] = useState<number | null>(null);
@@ -431,6 +435,35 @@ const ProductPage = () => {
           <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-200">
             <h3 className="font-semibold text-foreground mb-2">Summary</h3>
             <p className="text-muted-foreground text-sm">{product.analysis_summary}</p>
+          </div>
+        )}
+
+        {/* Universal Buy Button for all products */}
+        {hasScore && product && (
+          <div className="mt-5 space-y-3 animate-fade-up animation-delay-300">
+            <button
+              onClick={() => {
+                const matchedProduct = products.find(
+                  (p) => product.name?.toLowerCase().includes(p.name.split(' ')[0].toLowerCase())
+                );
+                const adminOverride = getLinkOverride(product.name);
+                const manualUrl = matchedProduct?.affiliateUrl;
+                const affiliateLink = getAffiliateLink(product.name, manualUrl, adminOverride);
+                
+                toast({
+                  title: "Opening Amazon...",
+                  description: `Finding ${product.name}`,
+                });
+                setTimeout(() => window.open(affiliateLink, "_blank"), 1000);
+              }}
+              className="w-full py-4 bg-primary text-primary-foreground font-bold text-lg rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg"
+            >
+              <ExternalLink className="w-5 h-5" />
+              Buy on Amazon
+            </button>
+            <p className="text-[10px] text-muted-foreground text-center opacity-70">
+              {AMAZON_DISCLAIMER}
+            </p>
           </div>
         )}
       </div>

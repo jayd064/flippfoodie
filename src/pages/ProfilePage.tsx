@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Settings, Scan, Skull, ShieldBan, Heart, Camera, Shield, ChevronRight, Pin, Users, Sparkles } from "lucide-react";
+import { Settings, Scan, Skull, ShieldBan, Heart, Camera, Shield, ChevronRight, Pin, Sparkles, Link2, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePosts } from "@/contexts/PostContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Drawer,
   DrawerContent,
@@ -14,8 +17,19 @@ import {
 
 const ProfilePage = () => {
   const { posts } = usePosts();
-  const { isAdmin, toggleAdmin, pinToSpotlight, unpinFromSpotlight, isPostPinned } = useAdmin();
+  const { 
+    isAdmin, 
+    toggleAdmin, 
+    pinToSpotlight, 
+    unpinFromSpotlight, 
+    isPostPinned,
+    linkOverrides,
+    addLinkOverride,
+    removeLinkOverride
+  } = useAdmin();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newLinkName, setNewLinkName] = useState("");
+  const [newLinkUrl, setNewLinkUrl] = useState("");
   
   // Calculate real stats from PostContext
   const userPosts = posts.filter(post => post.userName === 'You');
@@ -59,6 +73,18 @@ const ProfilePage = () => {
   // Calculate level based on activity
   const activityScore = userScans.length + villainsExposed * 2 + totalKarma / 100;
   const level = Math.min(Math.floor(activityScore / 5) + 1, 99);
+
+  // Handle adding a new link override
+  const handleAddLinkOverride = () => {
+    if (!newLinkName.trim() || !newLinkUrl.trim()) {
+      toast.error("Please enter both product name and URL");
+      return;
+    }
+    addLinkOverride(newLinkName.trim(), newLinkUrl.trim());
+    toast.success("Link override added!", { description: `${newLinkName} → ${newLinkUrl}` });
+    setNewLinkName("");
+    setNewLinkUrl("");
+  };
 
   // Community posts available for pinning
   const communityPosts = posts.filter(post => post.userName !== 'You');
@@ -148,6 +174,70 @@ const ProfilePage = () => {
                           </div>
                         ))}
                       </div>
+                    </div>
+
+                    {/* Link Override Management */}
+                    <div className="p-4 bg-amber-500/10 rounded-xl border border-amber-500/20 mt-4">
+                      <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Link2 className="w-4 h-4 text-amber-500" />
+                        Affiliate Link Overrides
+                      </h3>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Upgrade search links to direct affiliate URLs for popular products
+                      </p>
+                      
+                      {/* Add New Override */}
+                      <div className="space-y-2 mb-4">
+                        <Input
+                          placeholder="Product name (e.g., Oreo)"
+                          value={newLinkName}
+                          onChange={(e) => setNewLinkName(e.target.value)}
+                          className="bg-card/50 border-border/30 text-sm"
+                        />
+                        <Input
+                          placeholder="Amazon link (amzn.to/...)"
+                          value={newLinkUrl}
+                          onChange={(e) => setNewLinkUrl(e.target.value)}
+                          className="bg-card/50 border-border/30 text-sm"
+                        />
+                        <Button 
+                          onClick={handleAddLinkOverride}
+                          className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                          size="sm"
+                        >
+                          Add Override
+                        </Button>
+                      </div>
+
+                      {/* Existing Overrides */}
+                      {linkOverrides.length > 0 && (
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {linkOverrides.map((override) => (
+                            <div
+                              key={override.productName}
+                              className="flex items-center justify-between p-2 bg-card/50 rounded-lg"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-foreground font-medium truncate">
+                                  {override.productName}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {override.customUrl}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  removeLinkOverride(override.productName);
+                                  toast.success("Link override removed");
+                                }}
+                                className="p-1.5 rounded-lg bg-destructive/20 hover:bg-destructive/30 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

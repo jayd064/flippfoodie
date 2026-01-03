@@ -1,6 +1,8 @@
-import { ExternalLink, ArrowRight, Sparkles } from "lucide-react";
+import { ExternalLink, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Product } from "@/data/GlobalStore";
+import { getAffiliateLink, AMAZON_DISCLAIMER } from "@/lib/linkUtils";
+import { useAdmin } from "@/contexts/AdminContext";
 
 interface HeroSwapCardProps {
   hero: Product;
@@ -8,13 +10,18 @@ interface HeroSwapCardProps {
 }
 
 export const HeroSwapCard = ({ hero, villainName }: HeroSwapCardProps) => {
+  const { getLinkOverride } = useAdmin();
+  
   const handleGetProduct = () => {
+    const adminOverride = getLinkOverride(hero.name);
+    const affiliateLink = getAffiliateLink(hero.name, hero.affiliateUrl, adminOverride);
+    
     toast.success("Opening Amazon...", {
       description: `Redirecting to ${hero.name}`,
       duration: 2000,
     });
     setTimeout(() => {
-      window.open(hero.affiliateUrl, "_blank");
+      window.open(affiliateLink, "_blank");
     }, 1000);
   };
 
@@ -59,6 +66,10 @@ export const HeroSwapCard = ({ hero, villainName }: HeroSwapCardProps) => {
         Get Healthier Alternative
         <ExternalLink className="w-4 h-4" />
       </button>
+      
+      <p className="text-[10px] text-muted-foreground text-center mt-2 opacity-70">
+        {AMAZON_DISCLAIMER}
+      </p>
     </div>
   );
 };
