@@ -138,6 +138,13 @@ const ProfilePage = () => {
           </div>
         )}
       </div>
+
+      {/* Scan Dates Section - if we have history */}
+      {scanHistory.length > 0 && (
+        <div className="px-5 mt-4 text-xs text-muted-foreground text-center">
+          <p>Your scan journey began recently</p>
+        </div>
+      )}
     </div>
   );
 };
