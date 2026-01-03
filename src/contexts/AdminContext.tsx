@@ -5,13 +5,23 @@ export interface SpotlightItem {
   pinnedAt: Date;
 }
 
+export interface LinkOverride {
+  productName: string;
+  customUrl: string;
+  addedAt: Date;
+}
+
 interface AdminContextType {
   isAdmin: boolean;
   spotlightPins: SpotlightItem[];
+  linkOverrides: LinkOverride[];
   toggleAdmin: () => void;
   pinToSpotlight: (postId: string) => void;
   unpinFromSpotlight: (postId: string) => void;
   isPostPinned: (postId: string) => boolean;
+  addLinkOverride: (productName: string, customUrl: string) => void;
+  removeLinkOverride: (productName: string) => void;
+  getLinkOverride: (productName: string) => string | undefined;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -19,6 +29,7 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [spotlightPins, setSpotlightPins] = useState<SpotlightItem[]>([]);
+  const [linkOverrides, setLinkOverrides] = useState<LinkOverride[]>([]);
 
   const toggleAdmin = useCallback(() => {
     setIsAdmin((prev) => !prev);
@@ -46,15 +57,49 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     [spotlightPins]
   );
 
+  const addLinkOverride = useCallback((productName: string, customUrl: string) => {
+    setLinkOverrides((prev) => {
+      const existing = prev.findIndex(
+        (o) => o.productName.toLowerCase() === productName.toLowerCase()
+      );
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = { productName, customUrl, addedAt: new Date() };
+        return updated;
+      }
+      return [...prev, { productName, customUrl, addedAt: new Date() }];
+    });
+  }, []);
+
+  const removeLinkOverride = useCallback((productName: string) => {
+    setLinkOverrides((prev) =>
+      prev.filter((o) => o.productName.toLowerCase() !== productName.toLowerCase())
+    );
+  }, []);
+
+  const getLinkOverride = useCallback(
+    (productName: string): string | undefined => {
+      const override = linkOverrides.find(
+        (o) => o.productName.toLowerCase() === productName.toLowerCase()
+      );
+      return override?.customUrl;
+    },
+    [linkOverrides]
+  );
+
   return (
     <AdminContext.Provider
       value={{
         isAdmin,
         spotlightPins,
+        linkOverrides,
         toggleAdmin,
         pinToSpotlight,
         unpinFromSpotlight,
         isPostPinned,
+        addLinkOverride,
+        removeLinkOverride,
+        getLinkOverride,
       }}
     >
       {children}

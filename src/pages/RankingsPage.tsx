@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Trophy, ShoppingBag, Building2, Users, Crown, Share2, ExternalLink, AlertTriangle, Star, TrendingUp } from "lucide-react";
+import { Trophy, ShoppingBag, Building2, Users, Crown, Share2, ExternalLink, AlertTriangle, TrendingUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { getVillains, getHeroes, products } from "@/data/GlobalStore";
+import { getVillains, getHeroes } from "@/data/GlobalStore";
+import { getAffiliateLink, AMAZON_DISCLAIMER } from "@/lib/linkUtils";
+import { useAdmin } from "@/contexts/AdminContext";
 
 // Get real products from GlobalStore
 const guiltyGems = getVillains().slice(0, 5).map((p, idx) => ({
@@ -59,6 +61,15 @@ const getScoreColor = (score: number) => {
 
 const RankingsPage = () => {
   const [activeTab, setActiveTab] = useState("products");
+  const { getLinkOverride } = useAdmin();
+
+  const handleBuyProduct = (product: { name: string; affiliateUrl: string }) => {
+    const adminOverride = getLinkOverride(product.name);
+    const affiliateLink = getAffiliateLink(product.name, product.affiliateUrl, adminOverride);
+    
+    toast.success("Opening Amazon...", { description: `Redirecting to ${product.name}` });
+    setTimeout(() => window.open(affiliateLink, "_blank"), 1000);
+  };
 
   const handleShareRank = () => {
     if (navigator.share) {
@@ -155,10 +166,7 @@ const RankingsPage = () => {
                   <Button 
                     size="sm" 
                     className="bg-score-good hover:bg-score-good/90 text-xs h-8 px-3"
-                    onClick={() => {
-                      toast.success("Opening Amazon...", { description: `Redirecting to ${product.name}` });
-                      setTimeout(() => window.open(product.affiliateUrl, "_blank"), 1000);
-                    }}
+                    onClick={() => handleBuyProduct(product)}
                   >
                     <ExternalLink className="w-3 h-3 mr-1" />
                     Buy
@@ -166,6 +174,11 @@ const RankingsPage = () => {
                 </div>
               ))}
             </div>
+            
+            {/* Amazon Disclaimer */}
+            <p className="text-[10px] text-muted-foreground text-center mt-4 opacity-70">
+              {AMAZON_DISCLAIMER}
+            </p>
           </section>
 
           {/* Silent Switches */}

@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { ChevronUp, Flame, Leaf, Skull, Shield, X, Share2 } from "lucide-react";
+import { ChevronUp, Flame, Leaf, Skull, Shield, X, Share2, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
+import { getAffiliateLink, AMAZON_DISCLAIMER } from "@/lib/linkUtils";
+import { products as globalProducts, getHeroSwap } from "@/data/GlobalStore";
+import { useAdmin } from "@/contexts/AdminContext";
 import {
   Drawer,
   DrawerContent,
@@ -32,10 +36,41 @@ export const ScanResultOverlay = ({
   capturedFrame,
 }: ScanResultOverlayProps) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { getLinkOverride } = useAdmin();
 
   if (!isOpen) return null;
 
   const isGuilty = product.score < 40;
+  
+  // Find matching product in GlobalStore or use auto-search
+  const matchedProduct = globalProducts.find(
+    (p) => product.name?.toLowerCase().includes(p.name.split(' ')[0].toLowerCase())
+  );
+  const heroSwap = matchedProduct && matchedProduct.isVillain ? getHeroSwap(matchedProduct.id) : undefined;
+  
+  const handleBuyProduct = () => {
+    const adminOverride = getLinkOverride(product.name);
+    const manualUrl = matchedProduct?.affiliateUrl;
+    const affiliateLink = getAffiliateLink(product.name, manualUrl, adminOverride);
+    
+    toast.success("Opening Amazon...", {
+      description: `Finding ${product.name}`,
+      duration: 2000,
+    });
+    setTimeout(() => window.open(affiliateLink, "_blank"), 1000);
+  };
+  
+  const handleBuyHero = () => {
+    if (!heroSwap) return;
+    const adminOverride = getLinkOverride(heroSwap.name);
+    const affiliateLink = getAffiliateLink(heroSwap.name, heroSwap.affiliateUrl, adminOverride);
+    
+    toast.success("Opening Amazon...", {
+      description: `Get healthier: ${heroSwap.name}`,
+      duration: 2000,
+    });
+    setTimeout(() => window.open(affiliateLink, "_blank"), 1000);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -170,6 +205,38 @@ export const ScanResultOverlay = ({
                   <p className="text-[10px] text-white/80 font-medium tracking-wider">SCORE</p>
                 </div>
               </div>
+            </div>
+
+            {/* Buy Button - Always visible for revenue */}
+            <div className="space-y-2">
+              {/* Hero Swap for Villains */}
+              {isGuilty && heroSwap && (
+                <button
+                  onClick={handleBuyHero}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/25"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                  Get Hero: {heroSwap.name.split(' ').slice(0, 2).join(' ')}
+                </button>
+              )}
+              
+              {/* Buy This Product */}
+              <button
+                onClick={handleBuyProduct}
+                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all ${
+                  isGuilty && heroSwap
+                    ? "bg-white/5 border border-white/10 text-white/60 hover:bg-white/10"
+                    : "bg-primary text-primary-foreground hover:opacity-90"
+                }`}
+              >
+                <ExternalLink className="w-4 h-4" />
+                {isGuilty && heroSwap ? "Buy Anyway" : "Buy on Amazon"}
+              </button>
+              
+              {/* Disclaimer */}
+              <p className="text-[9px] text-zinc-500 text-center">
+                {AMAZON_DISCLAIMER}
+              </p>
             </div>
 
             {/* Share to Community Button */}
