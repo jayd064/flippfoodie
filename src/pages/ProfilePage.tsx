@@ -1,24 +1,51 @@
-import { Settings, Scan, Skull, ShieldBan, Heart, Camera } from "lucide-react";
+import { useState } from "react";
+import { Settings, Scan, Skull, ShieldBan, Heart, Camera, Shield, ChevronRight, Pin, Users, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePosts } from "@/contexts/PostContext";
+import { useAdmin } from "@/contexts/AdminContext";
+import { Switch } from "@/components/ui/switch";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 
 const ProfilePage = () => {
   const { posts } = usePosts();
+  const { isAdmin, toggleAdmin, pinToSpotlight, unpinFromSpotlight, isPostPinned } = useAdmin();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  // Calculate real stats from PostContext
+  const userPosts = posts.filter(post => post.userName === 'You');
+  const userScans = userPosts.filter(post => post.type === 'scan');
   
   // Calculate total karma (likes) from user's posts
-  const totalKarma = posts
-    .filter(post => post.userName === 'You')
-    .reduce((sum, post) => sum + post.likes, 0);
+  const totalKarma = userPosts.reduce((sum, post) => sum + post.likes, 0);
   
+  // Calculate villains exposed (scans with score < 40)
+  const villainsExposed = userScans.filter(post => post.score && post.score < 40).length;
+  
+  // Calculate toxic brands avoided (unique brands with low scores)
+  const toxicAvoided = new Set(
+    userScans
+      .filter(post => post.score && post.score < 40)
+      .map(post => post.community)
+  ).size;
+
+  // Check if user qualifies for Senior Detective badge
+  const isSeniorDetective = villainsExposed >= 10;
+
   // Get user's scan history
   const scanHistory = posts.filter(
     post => post.type === 'scan' || post.userName === 'You'
   );
 
   const stats = [
-    { icon: Scan, label: "Scans", value: "12", color: "text-primary" },
-    { icon: Skull, label: "Villains Exposed", value: "5", color: "text-destructive" },
-    { icon: ShieldBan, label: "Toxic Avoided", value: "3", color: "text-score-good" },
+    { icon: Scan, label: "Scans", value: userScans.length.toString() || "0", color: "text-primary" },
+    { icon: Skull, label: "Villains Exposed", value: villainsExposed.toString(), color: "text-destructive" },
+    { icon: ShieldBan, label: "Toxic Avoided", value: toxicAvoided.toString(), color: "text-score-good" },
     { icon: Heart, label: "Karma", value: totalKarma.toString(), color: "text-pink-500" },
   ];
 
@@ -29,39 +56,156 @@ const ProfilePage = () => {
     return "bg-score-bad/20 text-score-bad";
   };
 
+  // Calculate level based on activity
+  const activityScore = userScans.length + villainsExposed * 2 + totalKarma / 100;
+  const level = Math.min(Math.floor(activityScore / 5) + 1, 99);
+
+  // Community posts available for pinning
+  const communityPosts = posts.filter(post => post.userName !== 'You');
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] pb-32">
       {/* Header with Settings */}
       <header className="px-5 pt-12 pb-2 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Profile</h1>
-        <button className="p-2 rounded-xl bg-card/50 border border-border/30 hover:bg-card transition-colors">
-          <Settings className="w-5 h-5 text-muted-foreground" />
-        </button>
+        <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DrawerTrigger asChild>
+            <button className="p-2 rounded-xl bg-card/50 border border-border/30 hover:bg-card transition-colors">
+              <Settings className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </DrawerTrigger>
+          <DrawerContent className="bg-[#0a0a0a] border-border/30">
+            <DrawerHeader>
+              <DrawerTitle className="text-foreground">Settings</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-8 space-y-6">
+              {/* Regular Settings */}
+              <div className="space-y-3">
+                <button className="w-full flex items-center justify-between p-3 bg-card/50 rounded-xl border border-border/30">
+                  <span className="text-foreground">Edit Profile</span>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </button>
+                <button className="w-full flex items-center justify-between p-3 bg-card/50 rounded-xl border border-border/30">
+                  <span className="text-foreground">Notifications</span>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </button>
+                <button className="w-full flex items-center justify-between p-3 bg-card/50 rounded-xl border border-border/30">
+                  <span className="text-foreground">Privacy</span>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </button>
+              </div>
+
+              {/* Admin Section (Hidden unless 3x tap on avatar) */}
+              <div className="pt-4 border-t border-border/30">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    <span className="text-foreground font-medium">Admin Mode</span>
+                  </div>
+                  <Switch checked={isAdmin} onCheckedChange={toggleAdmin} />
+                </div>
+                
+                {isAdmin && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="p-4 bg-primary/10 rounded-xl border border-primary/20">
+                      <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Pin className="w-4 h-4 text-primary" />
+                        Spotlight Management
+                      </h3>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Pin community posts to the Home Spotlight carousel (max 3)
+                      </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {communityPosts.slice(0, 10).map((post) => (
+                          <div
+                            key={post.id}
+                            className="flex items-center justify-between p-2 bg-card/50 rounded-lg"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <img
+                                src={post.image}
+                                alt=""
+                                className="w-8 h-8 rounded object-cover flex-shrink-0"
+                              />
+                              <span className="text-sm text-foreground truncate">
+                                {post.title}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => 
+                                isPostPinned(post.id) 
+                                  ? unpinFromSpotlight(post.id)
+                                  : pinToSpotlight(post.id)
+                              }
+                              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                isPostPinned(post.id)
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-card border border-border/30 text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              {isPostPinned(post.id) ? "Pinned" : "Pin"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
       </header>
 
       {/* Identity Header */}
       <div className="px-5 py-6 flex flex-col items-center">
         {/* Avatar with Glowing Ring */}
         <div className="relative mb-4">
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-emerald-400 to-teal-500 blur-md opacity-60 animate-pulse" />
-          <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-primary to-emerald-600 p-[3px]">
+          <div 
+            className={`absolute inset-0 rounded-full blur-md opacity-60 animate-pulse ${
+              isSeniorDetective 
+                ? "bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500"
+                : "bg-gradient-to-r from-primary via-emerald-400 to-teal-500"
+            }`} 
+          />
+          <div 
+            className={`relative w-24 h-24 rounded-full p-[3px] ${
+              isSeniorDetective
+                ? "bg-gradient-to-br from-amber-400 to-yellow-600"
+                : "bg-gradient-to-br from-primary to-emerald-600"
+            }`}
+          >
             <div className="w-full h-full rounded-full bg-[#0a0a0a] flex items-center justify-center">
               <span className="text-3xl">🔍</span>
             </div>
           </div>
           {/* Level Badge */}
           <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-bold">
-            Lvl 5
+            Lvl {level}
           </div>
+          {/* Verified Badge */}
+          {isSeniorDetective && (
+            <div className="absolute -top-1 -right-1 p-1 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(251,191,36,0.5)]">
+              <Shield className="w-3 h-3 text-white" />
+            </div>
+          )}
         </div>
         
         {/* User Details */}
         <h2 className="text-xl font-bold text-foreground mb-1">Jayesh_Foodie</h2>
         <p className="text-sm text-muted-foreground flex items-center gap-1.5">
           <span>🛡️</span>
-          <span>Label Detective</span>
-          <span className="text-primary font-medium">(Lvl 5)</span>
+          <span>{isSeniorDetective ? "Senior Detective" : "Label Detective"}</span>
+          <span className={isSeniorDetective ? "text-amber-500 font-medium" : "text-primary font-medium"}>
+            (Lvl {level})
+          </span>
         </p>
+        {isSeniorDetective && (
+          <div className="mt-2 flex items-center gap-1 px-3 py-1 bg-amber-500/20 rounded-full border border-amber-500/30">
+            <Shield className="w-3 h-3 text-amber-500" />
+            <span className="text-xs text-amber-500 font-medium">Verified Detective</span>
+          </div>
+        )}
       </div>
 
       {/* Villain Stats Grid */}
