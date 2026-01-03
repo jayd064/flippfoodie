@@ -10,6 +10,7 @@ import ProductPage from "./pages/ProductPage";
 import AddProductPage from "./pages/AddProductPage";
 import HistoryPage from "./pages/HistoryPage";
 import ProfilePage from "./pages/ProfilePage";
+import RankingsPage from "./pages/RankingsPage";
 import LoginPage from "./pages/LoginPage";
 import CommunityFeedPage from "./pages/CommunityFeedPage";
 import ScannerPage from "./pages/ScannerPage";
@@ -32,10 +33,10 @@ const App = () => (
               <Route path="/add-product" element={<AddProductPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/feed" element={<CommunityFeedPage />} />
               <Route path="/scan" element={<ScannerPage />} />
-              <Route path="/search" element={<Index />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MobileLayout>

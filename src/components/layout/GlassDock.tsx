@@ -1,12 +1,12 @@
-import { Home, Search, Scan, Users, User } from "lucide-react";
+import { Home, Scan, Users, Trophy, User } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: Search, label: "Search", path: "/search" },
-  { icon: Scan, label: "Scan", path: "/scan", isHero: true },
   { icon: Users, label: "Subs", path: "/feed" },
+  { icon: Scan, label: "Scan", path: "/scan", isHero: true },
+  { icon: Trophy, label: "Rankings", path: "/rankings" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
