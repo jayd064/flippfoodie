@@ -7,6 +7,9 @@ const categories = [
   { id: 4, name: "Noodles", emoji: "🍜", color: "from-red-500/20 to-red-600/10", slug: "noodles" },
   { id: 5, name: "Snacks", emoji: "🍿", color: "from-yellow-500/20 to-yellow-600/10", slug: "snacks" },
   { id: 6, name: "Dairy", emoji: "🥛", color: "from-cyan-500/20 to-cyan-600/10", slug: "dairy" },
+  { id: 7, name: "Spreads", emoji: "🥜", color: "from-amber-600/20 to-amber-700/10", slug: "spreads" },
+  { id: 8, name: "Condiments", emoji: "🍅", color: "from-red-600/20 to-red-700/10", slug: "condiments" },
+  { id: 9, name: "Cereals", emoji: "🥣", color: "from-green-500/20 to-green-600/10", slug: "cereals" },
 ];
 
 export const Categories = () => {

@@ -11,10 +11,12 @@ import {
 } from "lucide-react";
 import { TikTokHeader } from "@/components/product/TikTokHeader";
 import { VillainsSection } from "@/components/product/VillainsSection";
+import { HeroSwapCard } from "@/components/product/HeroSwapCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import html2canvas from "html2canvas";
+import { products, getHeroSwap, Product } from "@/data/GlobalStore";
 
 const guiltyMemes = [
   "https://media.giphy.com/media/3o7TKnO6Wve6502iJ2/giphy.mp4",
@@ -406,6 +408,24 @@ const ProductPage = () => {
             />
           </div>
         )}
+
+        {/* Hero Swap Card for Villains (Score < 40) */}
+        {hasScore && revealedScore !== null && revealedScore < 40 && (() => {
+          // Find matching villain from GlobalStore by name
+          const matchedVillain = products.find(
+            (p) => p.isVillain && product?.name?.toLowerCase().includes(p.name.split(' ')[0].toLowerCase())
+          );
+          const heroSwap = matchedVillain ? getHeroSwap(matchedVillain.id) : undefined;
+          
+          if (heroSwap) {
+            return (
+              <div className="mt-5">
+                <HeroSwapCard hero={heroSwap} villainName={matchedVillain?.name} />
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {hasScore && product?.analysis_summary && (
           <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-200">
