@@ -14,16 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      posts: {
+        Row: {
+          author_name: string | null
+          comments_count: number | null
+          content: string | null
+          created_at: string | null
+          id: string
+          image_url: string | null
+          is_spotlight: boolean | null
+          title: string
+          tribe_id: string | null
+          upvotes: number | null
+        }
+        Insert: {
+          author_name?: string | null
+          comments_count?: number | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_spotlight?: boolean | null
+          title: string
+          tribe_id?: string | null
+          upvotes?: number | null
+        }
+        Update: {
+          author_name?: string | null
+          comments_count?: number | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_spotlight?: boolean | null
+          title?: string
+          tribe_id?: string | null
+          upvotes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_tribe_id_fkey"
+            columns: ["tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
+          affiliate_url: string | null
           analysis_summary: string | null
           back_image_url: string | null
           barcode: string
           brand: string | null
+          category: string | null
           created_at: string
           front_image_url: string | null
           health_score: number | null
+          hero_pair_barcode: string | null
           ingredients_text: string | null
+          is_hero: boolean | null
           last_analyzed_at: string | null
           name: string
           negative_points: string[] | null
@@ -31,14 +82,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          affiliate_url?: string | null
           analysis_summary?: string | null
           back_image_url?: string | null
           barcode: string
           brand?: string | null
+          category?: string | null
           created_at?: string
           front_image_url?: string | null
           health_score?: number | null
+          hero_pair_barcode?: string | null
           ingredients_text?: string | null
+          is_hero?: boolean | null
           last_analyzed_at?: string | null
           name: string
           negative_points?: string[] | null
@@ -46,14 +101,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          affiliate_url?: string | null
           analysis_summary?: string | null
           back_image_url?: string | null
           barcode?: string
           brand?: string | null
+          category?: string | null
           created_at?: string
           front_image_url?: string | null
           health_score?: number | null
+          hero_pair_barcode?: string | null
           ingredients_text?: string | null
+          is_hero?: boolean | null
           last_analyzed_at?: string | null
           name?: string
           negative_points?: string[] | null
@@ -90,6 +149,36 @@ export type Database = {
             referencedColumns: ["barcode"]
           },
         ]
+      }
+      tribes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          member_count: number | null
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          member_count?: number | null
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          member_count?: number | null
+          name?: string
+          slug?: string
+        }
+        Relationships: []
       }
     }
     Views: {

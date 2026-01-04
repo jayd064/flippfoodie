@@ -1,68 +1,92 @@
 import { ArrowUp, MessageCircle } from "lucide-react";
-import { usePosts } from "@/contexts/PostContext";
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface TrendingPost {
+  id: string;
+  title: string;
+  author_name: string;
+  upvotes: number;
+  comments_count: number;
+  created_at: string;
+}
 
 export const TrendingDiscussions = () => {
-  const { posts } = usePosts();
-  
-  // Get top 4 most-commented posts for trending
-  const trendingPosts = useMemo(() => {
-    return [...posts]
-      .sort((a, b) => b.comments.length - a.comments.length)
-      .slice(0, 4)
-      .map((post) => ({
-        id: post.id,
-        title: post.title,
-        author: post.userName,
-        upvotes: post.likes,
-        comments: post.comments.length,
-        timeAgo: getTimeAgo(post.createdAt),
-      }));
-  }, [posts]);
+  const [trendingPosts, setTrendingPosts] = useState<TrendingPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  function getTimeAgo(date: Date): string {
+  useEffect(() => {
+    const fetchTrending = async () => {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("id, title, author_name, upvotes, comments_count, created_at")
+        .eq("is_spotlight", false)
+        .order("upvotes", { ascending: false })
+        .limit(4);
+
+      if (!error && data) {
+        setTrendingPosts(data);
+      }
+      setIsLoading(false);
+    };
+
+    fetchTrending();
+  }, []);
+
+  function getTimeAgo(dateString: string): string {
     const now = new Date();
+    const date = new Date(dateString);
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffDays > 0) return `${diffDays}d`;
     if (diffHours > 0) return `${diffHours}h`;
     if (diffMins > 0) return `${diffMins}m`;
     return "now";
   }
 
-  // Fallback static data if no posts
+  // Fallback static data if no posts from DB
   const fallbackDiscussions = [
     {
       id: "fallback-1",
       title: "Why does Maggi taste different now?",
-      author: "FoodDetective",
+      author_name: "FoodDetective",
       upvotes: 342,
-      comments: 124,
-      timeAgo: "2h",
+      comments_count: 124,
+      created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     },
     {
       id: "fallback-2",
       title: "Amul vs Mother Dairy: The ultimate comparison",
-      author: "DairyExpert",
+      author_name: "DairyExpert",
       upvotes: 256,
-      comments: 89,
-      timeAgo: "5h",
-    },
-    {
-      id: "fallback-3",
-      title: "Hidden sugars in 'healthy' breakfast cereals",
-      author: "NutritionNinja",
-      upvotes: 189,
-      comments: 67,
-      timeAgo: "8h",
+      comments_count: 89,
+      created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
     },
   ];
 
   const discussions = trendingPosts.length > 0 ? trendingPosts : fallbackDiscussions;
+
+  if (isLoading) {
+    return (
+      <div className="px-5">
+        <h2 className="text-lg font-semibold text-foreground mb-4">
+          Trending Discussions
+        </h2>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+              <div className="h-4 bg-muted rounded w-3/4 mb-3" />
+              <div className="h-3 bg-muted rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-5">
@@ -72,7 +96,7 @@ export const TrendingDiscussions = () => {
       <div className="space-y-3">
         {discussions.map((discussion) => (
           <Link
-            to="/feed"
+            to={`/article/${discussion.id}`}
             key={discussion.id}
             className="block bg-card rounded-xl p-4 shadow-xl hover:bg-card/80 transition-colors"
           >
@@ -81,18 +105,18 @@ export const TrendingDiscussions = () => {
             </h3>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 text-muted-foreground text-xs">
-                <span>@{discussion.author}</span>
+                <span>@{discussion.author_name}</span>
                 <span>•</span>
-                <span>{discussion.timeAgo}</span>
+                <span>{getTimeAgo(discussion.created_at)}</span>
               </div>
               <div className="flex items-center gap-4">
-                <button className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors">
+                <div className="flex items-center gap-1.5 text-primary">
                   <ArrowUp className="w-4 h-4" />
                   <span className="text-xs font-medium">{discussion.upvotes}</span>
-                </button>
+                </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <MessageCircle className="w-4 h-4" />
-                  <span className="text-xs">{discussion.comments}</span>
+                  <span className="text-xs">{discussion.comments_count}</span>
                 </div>
               </div>
             </div>
