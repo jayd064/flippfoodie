@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePosts } from "@/contexts/PostContext";
 
 interface SubsHeaderProps {
   activeTab: "discover" | "stash";
@@ -10,15 +11,6 @@ interface SubsHeaderProps {
   onSearchChange: (query: string) => void;
 }
 
-const tribes = [
-  { id: "vegan", label: "Vegan", emoji: "🥬" },
-  { id: "gym", label: "Gym", emoji: "💪" },
-  { id: "junk", label: "Junk", emoji: "🍟" },
-  { id: "keto", label: "Keto", emoji: "🥑" },
-  { id: "desi", label: "Desi", emoji: "🇮🇳" },
-  { id: "baby", label: "Baby", emoji: "👶" },
-];
-
 const SubsHeader = ({
   activeTab,
   onTabChange,
@@ -27,6 +19,8 @@ const SubsHeader = ({
   searchQuery,
   onSearchChange,
 }: SubsHeaderProps) => {
+  const { tribes } = usePosts();
+
   return (
     <div className="sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-md pt-4 pb-3 px-4 space-y-4">
       {/* Search Bar */}
@@ -34,7 +28,7 @@ const SubsHeader = ({
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
         <input
           type="text"
-          placeholder="Search brands like Amul, Nestle..."
+          placeholder="Search tribes like Vegan, Gym..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="w-full h-12 pl-12 pr-4 bg-[#151515] border border-white/10 rounded-full text-white placeholder:text-zinc-500 focus:outline-none focus:border-white/20 transition-colors"
@@ -92,7 +86,7 @@ const SubsHeader = ({
             )}
           >
             <span>{tribe.emoji}</span>
-            <span>{tribe.label}</span>
+            <span>t/{tribe.name}</span>
           </button>
         ))}
       </div>

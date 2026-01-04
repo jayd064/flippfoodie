@@ -66,9 +66,10 @@ const CategoryViewPage = () => {
       {/* Product List */}
       <div className="px-5 space-y-3">
         {products.map((product) => (
-          <div
+          <Link
+            to={`/product/${product.id}`}
             key={product.id}
-            className="bg-card/50 rounded-2xl p-4 border border-border/30 backdrop-blur-sm hover:bg-card/70 transition-colors"
+            className="block bg-card/50 rounded-2xl p-4 border border-border/30 backdrop-blur-sm hover:bg-card/70 hover:scale-[1.01] transition-all"
           >
             <div className="flex items-center gap-4">
               {/* Product Image (App-style) */}
@@ -146,7 +147,7 @@ const CategoryViewPage = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

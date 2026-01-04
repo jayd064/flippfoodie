@@ -58,7 +58,10 @@ const FeedCard = ({ post, onLike, onComment, onShare }: FeedCardProps) => {
   const FlagIcon = flagStyle.icon;
 
   return (
-    <div className="relative w-full rounded-3xl overflow-hidden mb-6 bg-[#151515]">
+    <div 
+      className="relative w-full rounded-3xl overflow-hidden mb-6 bg-[#151515] cursor-pointer hover:scale-[1.01] transition-transform"
+      onClick={() => onComment(post.id)}
+    >
       {/* Image Container */}
       <div className="relative aspect-[4/5] overflow-hidden">
         <img
@@ -85,9 +88,9 @@ const FeedCard = ({ post, onLike, onComment, onShare }: FeedCardProps) => {
         </div>
 
         {/* Action Bar - Floating Right */}
-        <div className="absolute right-4 bottom-28 flex flex-col gap-4">
+        <div className="absolute right-4 bottom-28 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => onLike(post.id)}
+            onClick={(e) => { e.stopPropagation(); onLike(post.id); }}
             className="flex flex-col items-center gap-1"
           >
             <div
@@ -106,7 +109,7 @@ const FeedCard = ({ post, onLike, onComment, onShare }: FeedCardProps) => {
           </button>
 
           <button
-            onClick={() => onComment(post.id)}
+            onClick={(e) => { e.stopPropagation(); onComment(post.id); }}
             className="flex flex-col items-center gap-1"
           >
             <div className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex items-center justify-center backdrop-blur-md hover:bg-black/60 transition-all">
@@ -116,7 +119,7 @@ const FeedCard = ({ post, onLike, onComment, onShare }: FeedCardProps) => {
           </button>
 
           <button
-            onClick={() => onShare(post.id)}
+            onClick={(e) => { e.stopPropagation(); onShare(post.id); }}
             className="flex flex-col items-center gap-1"
           >
             <div className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex items-center justify-center backdrop-blur-md hover:bg-black/60 transition-all">
