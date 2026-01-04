@@ -47,10 +47,15 @@
     --score-bad: 350 89% 60%;
     --score-medium: 38 92% 50%;
     --score-good: 160 84% 39%;
+    --score-okay: 38 92% 50%;
 
     /* Glass tokens */
     --glass-bg: 0 0% 0% / 0.6;
     --glass-border: 0 0% 100% / 0.05;
+
+    /* Hero theme tokens */
+    --hero-bg: 145 80% 97%;
+    --hero-accent: 160 84% 39%;
 
     --nav-height: 6rem;
   }
@@ -145,6 +150,10 @@
 
   .bg-score-good {
     background-color: hsl(var(--score-good));
+  }
+
+  .bg-score-okay {
+    background-color: hsl(var(--score-okay));
   }
 }
 

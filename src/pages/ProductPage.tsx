@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -9,6 +9,10 @@ import {
   Clock,
   RotateCcw,
   ExternalLink,
+  MessageCircle,
+  Skull,
+  Leaf,
+  Edit3,
 } from "lucide-react";
 import { TikTokHeader } from "@/components/product/TikTokHeader";
 import { VillainsSection } from "@/components/product/VillainsSection";
@@ -20,6 +24,8 @@ import html2canvas from "html2canvas";
 import { products, getHeroSwap, Product } from "@/data/GlobalStore";
 import { getAffiliateLink, AMAZON_DISCLAIMER } from "@/lib/linkUtils";
 import { useAdmin } from "@/contexts/AdminContext";
+import { usePosts } from "@/contexts/PostContext";
+import { cn } from "@/lib/utils";
 
 const guiltyMemes = [
   "https://media.giphy.com/media/3o7TKnO6Wve6502iJ2/giphy.mp4",
@@ -56,12 +62,20 @@ const getMemeForScore = (score: number | null) => {
   return getRandomVideo(victoryMemes);
 };
 
+// Theme configuration based on score
+const getTheme = (score: number | null) => {
+  if (score === null) return "neutral";
+  return score < 50 ? "villain" : "hero";
+};
+
 const ProductPage = () => {
   const { barcode } = useParams<{ barcode: string }>();
   const [searchParams] = useSearchParams();
   const isAnalyzing = searchParams.get("analyzing") === "true";
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { getLinkOverride } = useAdmin();
+  const { posts } = usePosts();
   
   const [showSpinner, setShowSpinner] = useState(true);
   const [revealedScore, setRevealedScore] = useState<number | null>(null);
@@ -92,6 +106,24 @@ const ProductPage = () => {
   const memeVideo = useMemo(() => {
     return getMemeForScore(revealedScore);
   }, [revealedScore]);
+
+  const theme = getTheme(revealedScore);
+  const isVillain = theme === "villain";
+  const isHero = theme === "hero";
+
+  // Get sample community discussions related to this product
+  const relatedDiscussions = useMemo(() => {
+    if (!product?.name) return [];
+    const productWords = product.name.toLowerCase().split(" ");
+    return posts
+      .filter(post => 
+        productWords.some(word => 
+          post.title.toLowerCase().includes(word) || 
+          post.caption.toLowerCase().includes(word)
+        )
+      )
+      .slice(0, 3);
+  }, [posts, product?.name]);
 
   useEffect(() => {
     if (product) {
@@ -184,7 +216,6 @@ const ProductPage = () => {
     const shareUrl = window.location.href;
     
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const nav = navigator as any;
       if (nav.share) {
         await nav.share({
@@ -215,7 +246,6 @@ const ProductPage = () => {
     const shareBtn = document.getElementById("share-button");
 
     try {
-      // Hide buttons for clean screenshot
       if (backBtn) backBtn.style.opacity = "0";
       if (shareBtn) shareBtn.style.opacity = "0";
 
@@ -242,7 +272,6 @@ const ProductPage = () => {
 
       const file = new File([blob], "flippfoodie-scan.png", { type: "image/png" });
       
-      // Use any to bypass TypeScript strict checking
       if ((navigator as any).canShare?.({ files: [file] })) {
         await (navigator as any).share({ files: [file], title: "FlippFoodie Scan" });
       } else {
@@ -251,7 +280,6 @@ const ProductPage = () => {
     } catch {
       await shareTextFallback();
     } finally {
-      // Restore buttons
       if (backBtn) backBtn.style.opacity = "1";
       if (shareBtn) shareBtn.style.opacity = "1";
       setIsSharing(false);
@@ -263,7 +291,7 @@ const ProductPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
           <p className="text-muted-foreground">Loading product...</p>
@@ -274,7 +302,7 @@ const ProductPage = () => {
 
   if (barcode && !product && !isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-5">
+      <div className="min-h-screen flex items-center justify-center px-5 bg-background">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">Product not found</p>
           <Link to="/" className="text-primary hover:underline">
@@ -289,10 +317,38 @@ const ProductPage = () => {
   const productName = product?.name || "Unknown Product";
   const productBrand = product?.brand || "Unknown Brand";
 
+  // Theme-based styles
+  const bgClass = isVillain 
+    ? "bg-[#0a0a0a]" 
+    : isHero 
+    ? "bg-gradient-to-b from-emerald-50 via-white to-mint-50" 
+    : "bg-background";
+  
+  const cardClass = isVillain
+    ? "bg-[#151515] border-red-500/20"
+    : isHero
+    ? "bg-white/80 backdrop-blur-sm border-emerald-200"
+    : "bg-card border-border/50";
+
+  const textClass = isVillain
+    ? "text-white"
+    : isHero
+    ? "text-gray-900"
+    : "text-foreground";
+
+  const mutedTextClass = isVillain
+    ? "text-zinc-400"
+    : isHero
+    ? "text-gray-600"
+    : "text-muted-foreground";
+
   return (
-    <div className="min-h-screen pb-8">
+    <div className={cn("min-h-screen pb-8 transition-colors duration-500", bgClass)}>
       {showSpinner && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-3 px-4">
+        <div className={cn(
+          "fixed top-0 left-0 right-0 z-50 py-3 px-4",
+          isVillain ? "bg-red-600 text-white" : "bg-primary text-primary-foreground"
+        )}>
           <div className="flex items-center justify-center gap-2 animate-pulse">
             <Sparkles className="w-5 h-5" />
             <span className="text-sm font-medium">AI is Analyzing Label...</span>
@@ -313,9 +369,16 @@ const ProductPage = () => {
         <div id="back-button" className="absolute top-0 left-0 p-4 pt-12 z-20 transition-opacity">
           <Link
             to="/"
-            className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors"
+            className={cn(
+              "p-2.5 rounded-full backdrop-blur-sm border shadow-soft hover:opacity-80 transition-all",
+              isVillain 
+                ? "bg-black/50 border-red-500/30" 
+                : isHero 
+                ? "bg-white/80 border-emerald-200" 
+                : "bg-card/90 border-border/50"
+            )}
           >
-            <ArrowLeft className="w-5 h-5 text-foreground" />
+            <ArrowLeft className={cn("w-5 h-5", isVillain ? "text-white" : isHero ? "text-gray-900" : "text-foreground")} />
           </Link>
         </div>
         
@@ -323,37 +386,75 @@ const ProductPage = () => {
           <button 
             onClick={handleShare}
             disabled={isSharing}
-            className="p-2.5 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-soft hover:bg-card transition-colors disabled:opacity-50"
+            className={cn(
+              "p-2.5 rounded-full backdrop-blur-sm border shadow-soft hover:opacity-80 transition-all disabled:opacity-50",
+              isVillain 
+                ? "bg-black/50 border-red-500/30" 
+                : isHero 
+                ? "bg-white/80 border-emerald-200" 
+                : "bg-card/90 border-border/50"
+            )}
           >
             {isSharing ? (
-              <Loader2 className="w-5 h-5 text-foreground animate-spin" />
+              <Loader2 className={cn("w-5 h-5 animate-spin", textClass)} />
             ) : (
-              <Share2 className="w-5 h-5 text-foreground" />
+              <Share2 className={cn("w-5 h-5", textClass)} />
             )}
           </button>
         </div>
       </div>
 
       <div className="px-5 pt-4 relative z-10">
-        <div className="bg-card rounded-2xl p-5 shadow-card border border-border/50 animate-fade-up text-center">
-          <p className="text-sm text-muted-foreground">{productBrand}</p>
-          <h1 className="text-xl font-bold text-foreground mt-1">{productName}</h1>
+        {/* Product Info Card */}
+        <div className={cn(
+          "rounded-2xl p-5 shadow-card border animate-fade-up text-center",
+          cardClass
+        )}>
+          <p className={cn("text-sm", mutedTextClass)}>{productBrand}</p>
+          <h1 className={cn("text-xl font-bold mt-1", textClass)}>{productName}</h1>
           
           {product?.last_analyzed_at && hasScore && (
-            <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2">
+            <div className={cn("flex items-center justify-center gap-1 text-xs mt-2", mutedTextClass)}>
               <Clock className="w-3 h-3" />
               <span>Updated: {format(new Date(product.last_analyzed_at), "h:mm a")}</span>
             </div>
           )}
         </div>
 
+        {/* Hero vs Villain Story Card */}
+        {hasScore && (
+          <div className={cn(
+            "mt-5 rounded-2xl p-5 border backdrop-blur-sm animate-fade-up",
+            isVillain 
+              ? "bg-gradient-to-br from-red-950/50 to-black border-red-500/30" 
+              : "bg-gradient-to-br from-emerald-50 to-white border-emerald-200"
+          )}>
+            <div className="flex items-center gap-2 mb-3">
+              {isVillain ? (
+                <Skull className="w-5 h-5 text-red-400" />
+              ) : (
+                <Leaf className="w-5 h-5 text-emerald-600" />
+              )}
+              <h3 className={cn("font-bold", isVillain ? "text-red-400" : "text-emerald-700")}>
+                {isVillain ? "Villain Detected 👿" : "Hero Product 🌿"}
+              </h3>
+            </div>
+            <p className={cn("text-sm leading-relaxed", isVillain ? "text-zinc-300" : "text-gray-700")}>
+              {isVillain 
+                ? `This product scored ${revealedScore}/100. It may contain ingredients that aren't great for your health. Consider checking the alternatives below for a healthier swap!`
+                : `Great choice! This product scored ${revealedScore}/100. It's made with cleaner ingredients and is a better option for your health.`
+              }
+            </p>
+          </div>
+        )}
+
         {analysisFailed && (
           <div className="mt-5 bg-destructive/10 rounded-2xl p-6 border border-destructive/30 shadow-soft text-center animate-fade-up">
             <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
               <RotateCcw className="w-8 h-8 text-destructive" />
             </div>
-            <h3 className="font-semibold text-foreground mb-2">Could Not Find Data</h3>
-            <p className="text-sm text-muted-foreground mb-4">
+            <h3 className={cn("font-semibold mb-2", textClass)}>Could Not Find Data</h3>
+            <p className={cn("text-sm mb-4", mutedTextClass)}>
               🔄 Flip the pack and rescan the Nutrition Table for better results.
             </p>
             <Link
@@ -367,12 +468,15 @@ const ProductPage = () => {
         )}
 
         {showRevealButton && !analysisFailed && (
-          <div className="mt-5 bg-card rounded-2xl p-6 border border-border/50 shadow-soft text-center animate-fade-up">
+          <div className={cn(
+            "mt-5 rounded-2xl p-6 border shadow-soft text-center animate-fade-up",
+            cardClass
+          )}>
             <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-4">
               <Sparkles className="w-8 h-8 text-success" />
             </div>
-            <h3 className="font-semibold text-foreground mb-2">Analysis Complete!</h3>
-            <p className="text-sm text-muted-foreground mb-4">
+            <h3 className={cn("font-semibold mb-2", textClass)}>Analysis Complete!</h3>
+            <p className={cn("text-sm mb-4", mutedTextClass)}>
               Tap the button below to see your result.
             </p>
             <button
@@ -397,8 +501,8 @@ const ProductPage = () => {
             <div className="flex items-center gap-3">
               <Loader2 className="w-5 h-5 text-primary animate-spin" />
               <div>
-                <p className="text-sm font-medium text-foreground">Calculating details...</p>
-                <p className="text-xs text-muted-foreground">Finding ingredients & nutrition info</p>
+                <p className={cn("text-sm font-medium", textClass)}>Calculating details...</p>
+                <p className={cn("text-xs", mutedTextClass)}>Finding ingredients & nutrition info</p>
               </div>
             </div>
           </div>
@@ -413,9 +517,8 @@ const ProductPage = () => {
           </div>
         )}
 
-        {/* Hero Swap Card for Villains (Score < 40) */}
-        {hasScore && revealedScore !== null && revealedScore < 40 && (() => {
-          // Find matching villain from GlobalStore by name
+        {/* Hero Swap Card for Villains (Score < 50) */}
+        {hasScore && revealedScore !== null && revealedScore < 50 && (() => {
           const matchedVillain = products.find(
             (p) => p.isVillain && product?.name?.toLowerCase().includes(p.name.split(' ')[0].toLowerCase())
           );
@@ -431,14 +534,85 @@ const ProductPage = () => {
           return null;
         })()}
 
-        {hasScore && product?.analysis_summary && (
-          <div className="mt-5 bg-card rounded-2xl p-4 border border-border/50 shadow-soft animate-fade-up animation-delay-200">
-            <h3 className="font-semibold text-foreground mb-2">Summary</h3>
-            <p className="text-muted-foreground text-sm">{product.analysis_summary}</p>
+        {/* Tribe Discussions Section */}
+        {hasScore && (
+          <div className={cn(
+            "mt-5 rounded-2xl p-5 border animate-fade-up",
+            cardClass
+          )}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <MessageCircle className={cn("w-5 h-5", isVillain ? "text-red-400" : isHero ? "text-emerald-600" : "text-primary")} />
+                <h3 className={cn("font-bold", textClass)}>Tribe Discussions</h3>
+              </div>
+              <span className={cn("text-xs", mutedTextClass)}>
+                {relatedDiscussions.length} threads
+              </span>
+            </div>
+            
+            {relatedDiscussions.length > 0 ? (
+              <div className="space-y-3">
+                {relatedDiscussions.map((discussion) => (
+                  <button
+                    key={discussion.id}
+                    onClick={() => navigate("/community")}
+                    className={cn(
+                      "w-full text-left p-3 rounded-xl border transition-all hover:scale-[1.02]",
+                      isVillain 
+                        ? "bg-black/30 border-white/10 hover:border-red-500/30" 
+                        : isHero 
+                        ? "bg-emerald-50/50 border-emerald-100 hover:border-emerald-300" 
+                        : "bg-muted/30 border-border/30 hover:border-primary/30"
+                    )}
+                  >
+                    <p className={cn("text-sm font-medium line-clamp-1", textClass)}>
+                      {discussion.title}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={cn("text-xs", mutedTextClass)}>
+                        t/{discussion.community.replace("r/", "")}
+                      </span>
+                      <span className={mutedTextClass}>•</span>
+                      <span className={cn("text-xs", mutedTextClass)}>
+                        {discussion.comments.length} replies
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className={cn("text-sm text-center py-4", mutedTextClass)}>
+                No discussions yet. Be the first to share your thoughts!
+              </p>
+            )}
+            
+            {/* Write Review FAB */}
+            <button
+              onClick={() => navigate("/community")}
+              className={cn(
+                "w-full mt-4 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all",
+                isVillain 
+                  ? "bg-red-600 text-white hover:bg-red-500" 
+                  : "bg-emerald-600 text-white hover:bg-emerald-500"
+              )}
+            >
+              <Edit3 className="w-4 h-4" />
+              Write a Review
+            </button>
           </div>
         )}
 
-        {/* Universal Buy Button for all products */}
+        {hasScore && product?.analysis_summary && (
+          <div className={cn(
+            "mt-5 rounded-2xl p-4 border shadow-soft animate-fade-up animation-delay-200",
+            cardClass
+          )}>
+            <h3 className={cn("font-semibold mb-2", textClass)}>Summary</h3>
+            <p className={cn("text-sm", mutedTextClass)}>{product.analysis_summary}</p>
+          </div>
+        )}
+
+        {/* Dynamic CTA Button based on theme */}
         {hasScore && product && (
           <div className="mt-5 space-y-3 animate-fade-up animation-delay-300">
             <button
@@ -456,12 +630,21 @@ const ProductPage = () => {
                 });
                 setTimeout(() => window.open(affiliateLink, "_blank"), 1000);
               }}
-              className="w-full py-4 bg-primary text-primary-foreground font-bold text-lg rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg"
+              className={cn(
+                "w-full py-4 font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-2",
+                isVillain 
+                  ? "bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/25" 
+                  : "bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/25"
+              )}
             >
+              {isVillain ? (
+                <>😈 Indulge (At Your Own Risk)</>
+              ) : (
+                <>🌿 Grab the Goodness</>
+              )}
               <ExternalLink className="w-5 h-5" />
-              Buy on Amazon
             </button>
-            <p className="text-[10px] text-muted-foreground text-center opacity-70">
+            <p className={cn("text-[10px] text-center opacity-70", mutedTextClass)}>
               {AMAZON_DISCLAIMER}
             </p>
           </div>

@@ -35,7 +35,8 @@ export const SearchBar = () => {
   const handleSelect = (product: Product) => {
     setQuery("");
     setIsOpen(false);
-    navigate(`/category/${product.category}`);
+    // Navigate to a mock product page using the product ID as barcode
+    navigate(`/product/${product.id}`);
   };
 
   const getScoreColor = (score: number) => {
@@ -65,7 +66,7 @@ export const SearchBar = () => {
 
       {/* Search Results Dropdown */}
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl border border-border/30 shadow-xl overflow-hidden z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl border border-border/30 shadow-2xl overflow-hidden z-[9999]">
           {results.map((product) => (
             <button
               key={product.id}
@@ -99,7 +100,7 @@ export const SearchBar = () => {
 
       {/* No Results */}
       {isOpen && query.length >= 2 && results.length === 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl border border-border/30 shadow-xl p-4 text-center z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl border border-border/30 shadow-2xl p-4 text-center z-[9999]">
           <p className="text-sm text-muted-foreground">No products found</p>
         </div>
       )}

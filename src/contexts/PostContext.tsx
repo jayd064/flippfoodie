@@ -64,7 +64,7 @@ const mockPosts: Post[] = [
   {
     id: "1",
     type: "manual",
-    community: "r/HealthyEating",
+    community: "t/HealthyEating",
     image: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&h=750&fit=crop",
     flag: "alert",
     flagLabel: "Health Alert",
@@ -111,7 +111,7 @@ const mockPosts: Post[] = [
   {
     id: "2",
     type: "manual",
-    community: "r/Amul",
+    community: "t/Amul",
     image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&h=750&fit=crop",
     flag: "review",
     flagLabel: "Review",
@@ -128,7 +128,7 @@ const mockPosts: Post[] = [
   {
     id: "3",
     type: "manual",
-    community: "r/HealthyEating",
+    community: "t/HealthyEating",
     image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=750&fit=crop",
     flag: "safe",
     flagLabel: "Approved",
@@ -145,7 +145,7 @@ const mockPosts: Post[] = [
   {
     id: "4",
     type: "manual",
-    community: "r/JunkFood",
+    community: "t/JunkFood",
     image: "https://images.unsplash.com/photo-1600952841320-db92ec4047ca?w=600&h=750&fit=crop",
     flag: "alert",
     flagLabel: "Health Alert",

@@ -6,7 +6,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { usePosts, Tribe } from "@/contexts/PostContext";
+import { usePosts } from "@/contexts/PostContext";
 import { cn } from "@/lib/utils";
 
 interface NewPostDrawerProps {
@@ -25,7 +25,7 @@ const flagOptions = [
 const NewPostDrawer = ({ isOpen, onClose }: NewPostDrawerProps) => {
   const { tribes, addTribe, addPost } = usePosts();
   const [showCommunitySelector, setShowCommunitySelector] = useState(false);
-  const [selectedCommunity, setSelectedCommunity] = useState<string>("r/General");
+  const [selectedCommunity, setSelectedCommunity] = useState<string>("t/General");
   const [isCreatingTribe, setIsCreatingTribe] = useState(false);
   const [newTribeName, setNewTribeName] = useState("");
   const [newTribeEmoji, setNewTribeEmoji] = useState("🌟");
@@ -47,7 +47,7 @@ const NewPostDrawer = ({ isOpen, onClose }: NewPostDrawerProps) => {
       emoji: newTribeEmoji,
     });
     
-    setSelectedCommunity(`r/${newTribeName.trim()}`);
+    setSelectedCommunity(`t/${newTribeName.trim()}`);
     setIsCreatingTribe(false);
     setShowCommunitySelector(false);
     setNewTribeName("");
@@ -79,7 +79,7 @@ const NewPostDrawer = ({ isOpen, onClose }: NewPostDrawerProps) => {
     setTitle("");
     setCaption("");
     setSelectedFlag("review");
-    setSelectedCommunity("r/General");
+    setSelectedCommunity("t/General");
     onClose();
   };
 
@@ -96,7 +96,7 @@ const NewPostDrawer = ({ isOpen, onClose }: NewPostDrawerProps) => {
         <div className="px-6 pb-8 space-y-5 overflow-y-auto">
           {/* Community Selector */}
           <div className="space-y-2">
-            <label className="text-sm text-zinc-400">Community</label>
+            <label className="text-sm text-zinc-400">Tribe</label>
             <button
               onClick={() => setShowCommunitySelector(!showCommunitySelector)}
               className="w-full flex items-center justify-between p-4 bg-[#151515] border border-white/10 rounded-xl text-white hover:border-white/20 transition-colors"
@@ -113,25 +113,25 @@ const NewPostDrawer = ({ isOpen, onClose }: NewPostDrawerProps) => {
                 {/* Existing Communities */}
                 <div className="max-h-48 overflow-y-auto">
                   <button
-                    onClick={() => handleSelectCommunity("r/General")}
+                    onClick={() => handleSelectCommunity("t/General")}
                     className="w-full p-3 text-left text-white hover:bg-white/5 transition-colors"
                   >
-                    r/General
+                    t/General
                   </button>
                   <button
-                    onClick={() => handleSelectCommunity("r/Scans")}
+                    onClick={() => handleSelectCommunity("t/Scans")}
                     className="w-full p-3 text-left text-white hover:bg-white/5 transition-colors"
                   >
-                    r/Scans
+                    t/Scans
                   </button>
                   {tribes.map((tribe) => (
                     <button
                       key={tribe.id}
-                      onClick={() => handleSelectCommunity(`r/${tribe.name}`)}
+                      onClick={() => handleSelectCommunity(`t/${tribe.name}`)}
                       className="w-full p-3 text-left text-white hover:bg-white/5 transition-colors flex items-center gap-2"
                     >
                       <span>{tribe.emoji}</span>
-                      <span>r/{tribe.name}</span>
+                      <span>t/{tribe.name}</span>
                     </button>
                   ))}
                 </div>
