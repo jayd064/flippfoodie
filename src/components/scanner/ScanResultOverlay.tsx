@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronUp, Flame, Leaf, Skull, Shield, X, Share2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { getAffiliateLink, AMAZON_DISCLAIMER } from "@/lib/linkUtils";
 import { products as globalProducts, getHeroSwap } from "@/data/GlobalStore";
 import { useAdmin } from "@/contexts/AdminContext";
+import { useGamification } from "@/hooks/useGamification";
 import {
   Drawer,
   DrawerContent,
@@ -36,11 +37,25 @@ export const ScanResultOverlay = ({
   capturedFrame,
 }: ScanResultOverlayProps) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [hasRecordedScan, setHasRecordedScan] = useState(false);
   const { getLinkOverride } = useAdmin();
-
-  if (!isOpen) return null;
+  const { recordScan } = useGamification();
 
   const isGuilty = product.score < 40;
+  
+  // Record scan when overlay opens (only once per scan)
+  useEffect(() => {
+    if (isOpen && !hasRecordedScan && product.name) {
+      recordScan(isGuilty);
+      setHasRecordedScan(true);
+    }
+    // Reset when overlay closes
+    if (!isOpen) {
+      setHasRecordedScan(false);
+    }
+  }, [isOpen, hasRecordedScan, product.name, isGuilty, recordScan]);
+
+  if (!isOpen) return null;
   
   // Find matching product in GlobalStore or use auto-search
   const matchedProduct = globalProducts.find(
