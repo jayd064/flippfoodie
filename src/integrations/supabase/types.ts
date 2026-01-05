@@ -121,6 +121,45 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          level: number | null
+          scans_count: number | null
+          total_karma: number | null
+          updated_at: string | null
+          user_id: string | null
+          villains_exposed: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          level?: number | null
+          scans_count?: number | null
+          total_karma?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          villains_exposed?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          level?: number | null
+          scans_count?: number | null
+          total_karma?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          villains_exposed?: number | null
+        }
+        Relationships: []
+      }
       scans: {
         Row: {
           id: string
