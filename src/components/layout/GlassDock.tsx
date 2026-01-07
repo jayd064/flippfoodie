@@ -14,9 +14,9 @@ export const GlassDock = () => {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-6 left-4 right-4 z-50">
+    <nav className="fixed bottom-6 left-4 right-4 z-50 pb-safe">
       <div className="relative bg-black/60 backdrop-blur-xl border border-white/5 rounded-2xl mx-auto max-w-md">
-        <div className="flex items-center justify-around h-16 px-2">
+        <div className="flex items-center justify-around h-16 px-6">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
