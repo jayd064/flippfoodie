@@ -26,7 +26,7 @@ export const GlassDock = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="relative -mt-8 group"
+                  className="relative -mt-8 group active:scale-95 transition-transform"
                 >
                   {/* Ambient glow */}
                   <div className="absolute inset-0 -m-2 bg-primary/30 rounded-full blur-xl animate-pulse opacity-60" />
@@ -38,7 +38,7 @@ export const GlassDock = () => {
                       "relative w-14 h-14 rounded-full flex items-center justify-center",
                       "bg-gradient-to-br from-primary to-primary/80",
                       "shadow-lg shadow-primary/30",
-                      "transition-transform duration-300 group-hover:scale-105"
+                      "transition-transform duration-200 group-hover:scale-105 group-active:scale-95"
                     )}
                   >
                     <Icon className="w-6 h-6 text-primary-foreground" strokeWidth={2.5} />
