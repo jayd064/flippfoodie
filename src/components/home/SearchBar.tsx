@@ -1,25 +1,58 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Search, X, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { searchProducts, Product } from "@/data/GlobalStore";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ProductResult {
+  barcode: string;
+  name: string;
+  brand: string | null;
+  front_image_url: string | null;
+  health_score: number | null;
+}
 
 export const SearchBar = () => {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Product[]>([]);
+  const [results, setResults] = useState<ProductResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (query.length >= 2) {
-      const searchResults = searchProducts(query);
-      setResults(searchResults.slice(0, 6));
-      setIsOpen(true);
-    } else {
-      setResults([]);
-      setIsOpen(false);
-    }
+    const searchProducts = async () => {
+      if (query.length >= 2) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("barcode, name, brand, front_image_url, health_score")
+          .or(`name.ilike.%${query}%,brand.ilike.%${query}%`)
+          .limit(6);
+
+        if (!error && data) {
+          setResults(data);
+          setIsOpen(true);
+        }
+      } else {
+        setResults([]);
+        setIsOpen(false);
+      }
+    };
+    
+    const debounce = setTimeout(searchProducts, 200);
+    return () => clearTimeout(debounce);
   }, [query]);
+
+  useEffect(() => {
+    if (containerRef.current && isOpen) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, [isOpen, query]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -31,14 +64,14 @@ export const SearchBar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelect = (product: Product) => {
+  const handleSelect = (product: ProductResult) => {
     setQuery("");
     setIsOpen(false);
-    navigate(`/product/${product.id}`);
+    navigate(`/product/${product.barcode}`);
   };
 
-  const getScoreColor = (score: number) => {
-    if (score < 40) return "text-red-400 bg-red-500/20";
+  const getScoreColor = (score: number | null) => {
+    if (!score || score < 40) return "text-red-400 bg-red-500/20";
     if (score < 70) return "text-amber-400 bg-amber-500/20";
     return "text-emerald-400 bg-emerald-500/20";
   };
@@ -69,15 +102,15 @@ export const SearchBar = () => {
         )}
       </div>
 
-      {/* Premium Glass Dropdown - FIXED positioning with z-[9999] */}
-      {isOpen && (
+      {/* Premium Portal Dropdown - z-[99999] above everything */}
+      {isOpen && createPortal(
         <div 
-          className="fixed left-5 right-5 mt-2 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+          className="fixed rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
           style={{
-            zIndex: 9999,
-            top: containerRef.current 
-              ? containerRef.current.getBoundingClientRect().bottom 
-              : 'auto',
+            zIndex: 99999,
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            width: dropdownPos.width,
           }}
         >
           {/* Premium Glass Background with Heavy Shadow */}
@@ -86,7 +119,7 @@ export const SearchBar = () => {
               <div className="max-h-[60vh] overflow-y-auto">
                 {results.map((product, index) => (
                   <button
-                    key={product.id}
+                    key={product.barcode}
                     onClick={() => handleSelect(product)}
                     className={`w-full flex items-center gap-4 p-4 hover:bg-white/5 transition-all duration-200 ${
                       index !== results.length - 1 ? "border-b border-white/5" : ""
@@ -95,7 +128,7 @@ export const SearchBar = () => {
                     {/* Product Image */}
                     <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/5 flex-shrink-0">
                       <img
-                        src={product.image}
+                        src={product.front_image_url || "/placeholder.svg"}
                         alt={product.name}
                         className="w-full h-full object-cover"
                       />
@@ -106,17 +139,17 @@ export const SearchBar = () => {
                       <h3 className="font-semibold text-white truncate">
                         {product.name}
                       </h3>
-                      <p className="text-sm text-zinc-500">{product.brand}</p>
+                      <p className="text-sm text-zinc-500">{product.brand || "Unknown"}</p>
                     </div>
                     
                     {/* Score Badge */}
                     <div className="flex items-center gap-2">
                       <span
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold ${getScoreColor(
-                          product.healthScore
+                          product.health_score
                         )}`}
                       >
-                        {product.healthScore}
+                        {product.health_score || "?"}
                       </span>
                       <ChevronRight className="w-4 h-4 text-zinc-600" />
                     </div>
@@ -129,7 +162,8 @@ export const SearchBar = () => {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
