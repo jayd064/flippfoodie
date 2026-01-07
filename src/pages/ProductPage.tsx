@@ -342,8 +342,15 @@ const ProductPage = () => {
     ? "text-gray-600"
     : "text-muted-foreground";
 
+  // Screen glow effect based on score
+  const glowClass = isVillain 
+    ? "shadow-[0_0_100px_-20px_rgba(239,68,68,0.4)]" 
+    : isHero 
+    ? "shadow-[0_0_100px_-20px_rgba(16,185,129,0.4)]" 
+    : "";
+
   return (
-    <div className={cn("min-h-screen pb-8 transition-colors duration-500", bgClass)}>
+    <div className={cn("min-h-screen pb-8 transition-colors duration-500", bgClass, glowClass)}>
       {showSpinner && (
         <div className={cn(
           "fixed top-0 left-0 right-0 z-50 py-3 px-4",

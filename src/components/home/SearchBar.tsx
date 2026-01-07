@@ -157,8 +157,18 @@ export const SearchBar = () => {
                 ))}
               </div>
             ) : (
-              <div className="p-6 text-center">
-                <p className="text-zinc-500">No products found</p>
+              <div className="p-6 text-center space-y-4">
+                <p className="text-zinc-400">No products found for "{query}"</p>
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    setIsOpen(false);
+                    navigate("/add-product");
+                  }}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] transition-all duration-300"
+                >
+                  ✨ Request this Product
+                </button>
               </div>
             )}
           </div>
