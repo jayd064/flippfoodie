@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, ChevronUp, ChevronDown, Send } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { BattleAvatar } from "@/components/profile/BattleAvatar";
 
 interface Comment {
   id: string;
@@ -84,10 +85,11 @@ const CommentItem = ({
         {/* Comment content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <img
-              src={comment.userAvatar}
-              alt={comment.userName}
-              className="w-6 h-6 rounded-full"
+            <BattleAvatar
+              userId={comment.id}
+              userName={comment.userName}
+              avatarUrl={comment.userAvatar}
+              size="sm"
             />
             <span className="text-sm font-medium text-zinc-400">
               {comment.userName}

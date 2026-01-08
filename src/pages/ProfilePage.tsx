@@ -10,6 +10,7 @@ import { Confetti } from "@/components/effects/Confetti";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { BattleCard } from "@/components/profile/BattleCard";
 
 const ProfilePage = () => {
   const { posts } = usePosts();
@@ -25,6 +26,7 @@ const ProfilePage = () => {
   } = useAdmin();
   const { profile, loading, getLevelInfo } = useGamification();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showBattleCard, setShowBattleCard] = useState(false);
   const [newLinkName, setNewLinkName] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
 
@@ -219,7 +221,10 @@ const ProfilePage = () => {
           
           {/* Avatar with Level Ring */}
           <div className="flex flex-col items-center mb-6 relative z-10">
-            <div className={`relative w-24 h-24 rounded-full ring-4 ${getLevelGlow()} p-1 bg-[#0a0a0a]`}>
+            <button 
+              onClick={() => setShowBattleCard(true)}
+              className={`relative w-24 h-24 rounded-full ring-4 ${getLevelGlow()} p-1 bg-[#0a0a0a] hover:scale-105 active:scale-95 transition-transform`}
+            >
               <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                 <span className="text-4xl">{levelInfo.emoji}</span>
               </div>
@@ -233,7 +238,7 @@ const ProfilePage = () => {
                   <Shield className="w-3 h-3 text-white" />
                 </div>
               )}
-            </div>
+            </button>
             
             {/* Name & Title */}
             <h2 className="mt-4 text-xl font-bold text-white">
@@ -349,6 +354,14 @@ const ProfilePage = () => {
           )}
         </div>
       </section>
+
+      {/* Battle Card Modal */}
+      <BattleCard
+        userId={profile?.id || "demo"}
+        userName={profile?.display_name || "Anonymous Scanner"}
+        isOpen={showBattleCard}
+        onClose={() => setShowBattleCard(false)}
+      />
     </div>
   );
 };
