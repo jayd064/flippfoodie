@@ -2,7 +2,6 @@ import { SearchBar } from "@/components/home/SearchBar";
 import { SpotlightCarousel } from "@/components/home/SpotlightCarousel";
 import { Categories } from "@/components/home/Categories";
 import { TrendingDiscussions } from "@/components/home/TrendingDiscussions";
-import { LiveRings } from "@/components/home/LiveRings";
 import { Sparkles } from "lucide-react";
 
 const Index = () => {
@@ -20,11 +19,6 @@ const Index = () => {
           </div>
         </div>
       </header>
-
-      {/* Live Story Rings */}
-      <section className="mb-4 animate-fade-up animation-delay-100">
-        <LiveRings />
-      </section>
 
       {/* Search Bar */}
       <div className="px-5 mb-6 animate-fade-up animation-delay-150">
