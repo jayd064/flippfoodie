@@ -2,13 +2,14 @@ import { SearchBar } from "@/components/home/SearchBar";
 import { SpotlightCarousel } from "@/components/home/SpotlightCarousel";
 import { Categories } from "@/components/home/Categories";
 import { TrendingDiscussions } from "@/components/home/TrendingDiscussions";
+import { LiveRings } from "@/components/home/LiveRings";
 import { Sparkles } from "lucide-react";
 
 const Index = () => {
   return (
     <div className="min-h-screen pb-28">
       {/* Header */}
-      <header className="px-5 pt-12 pb-6 animate-fade-up">
+      <header className="px-5 pt-12 pb-4 animate-fade-up">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/10">
             <Sparkles className="w-6 h-6 text-primary" />
@@ -20,8 +21,13 @@ const Index = () => {
         </div>
       </header>
 
+      {/* Live Story Rings */}
+      <section className="mb-4 animate-fade-up animation-delay-100">
+        <LiveRings />
+      </section>
+
       {/* Search Bar */}
-      <div className="px-5 mb-6 animate-fade-up animation-delay-100">
+      <div className="px-5 mb-6 animate-fade-up animation-delay-150">
         <SearchBar />
       </div>
 
