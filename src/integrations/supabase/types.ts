@@ -125,9 +125,13 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          credits: number | null
+          daily_quests: Json | null
           display_name: string | null
+          equipped_theme: string | null
           id: string
           level: number | null
+          owned_themes: string[] | null
           scans_count: number | null
           total_karma: number | null
           updated_at: string | null
@@ -137,9 +141,13 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          credits?: number | null
+          daily_quests?: Json | null
           display_name?: string | null
+          equipped_theme?: string | null
           id?: string
           level?: number | null
+          owned_themes?: string[] | null
           scans_count?: number | null
           total_karma?: number | null
           updated_at?: string | null
@@ -149,9 +157,13 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          credits?: number | null
+          daily_quests?: Json | null
           display_name?: string | null
+          equipped_theme?: string | null
           id?: string
           level?: number | null
+          owned_themes?: string[] | null
           scans_count?: number | null
           total_karma?: number | null
           updated_at?: string | null
