@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BattleCard } from "./BattleCard";
+import { CinematicBattleCard } from "./CinematicBattleCard";
 import { cn } from "@/lib/utils";
 
 interface BattleAvatarProps {
@@ -58,7 +58,7 @@ export const BattleAvatar = ({ userId, userName, avatarUrl, size = "md", classNa
         )}
       </button>
 
-      <BattleCard
+      <CinematicBattleCard
         userId={userId}
         userName={userName}
         userAvatar={avatarUrl}

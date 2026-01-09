@@ -2,6 +2,7 @@ import { SearchBar } from "@/components/home/SearchBar";
 import { SpotlightCarousel } from "@/components/home/SpotlightCarousel";
 import { Categories } from "@/components/home/Categories";
 import { TrendingDiscussions } from "@/components/home/TrendingDiscussions";
+import { DailyOps } from "@/components/home/DailyOps";
 import { Sparkles } from "lucide-react";
 
 const Index = () => {
@@ -25,8 +26,13 @@ const Index = () => {
         <SearchBar />
       </div>
 
+      {/* Daily Ops - Mission Control */}
+      <section className="animate-fade-up animation-delay-200">
+        <DailyOps />
+      </section>
+
       {/* Spotlight Carousel */}
-      <section className="mb-8 animate-fade-up animation-delay-200">
+      <section className="mb-8 animate-fade-up animation-delay-250">
         <div className="px-5 mb-4">
           <h2 className="text-lg font-semibold text-foreground">The Spotlight</h2>
         </div>

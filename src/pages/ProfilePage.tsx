@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Zap, Shield, Skull, Heart, ChevronRight, Sparkles, Crown, Target, Camera, Link2, Pin, Trash2 } from "lucide-react";
+import { Settings, Zap, Shield, Skull, Heart, ChevronRight, Sparkles, Crown, Target, Camera, Link2, Pin, Trash2, Palette } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
@@ -10,7 +10,8 @@ import { Confetti } from "@/components/effects/Confetti";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { BattleCard } from "@/components/profile/BattleCard";
+import { CinematicBattleCard } from "@/components/profile/CinematicBattleCard";
+import { StyleShop } from "@/components/profile/StyleShop";
 
 const ProfilePage = () => {
   const { posts } = usePosts();
@@ -27,6 +28,7 @@ const ProfilePage = () => {
   const { profile, loading, getLevelInfo } = useGamification();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showBattleCard, setShowBattleCard] = useState(false);
+  const [showStyleShop, setShowStyleShop] = useState(false);
   const [newLinkName, setNewLinkName] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
 
@@ -301,13 +303,16 @@ const ProfilePage = () => {
             <p className="text-2xl font-bold text-foreground">{profile?.villains_exposed || 0}</p>
           </div>
           
-          <div className="p-4 rounded-2xl bg-card border border-border/50">
+          <button
+            onClick={() => setShowStyleShop(true)}
+            className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-600/10 border border-amber-500/20 hover:border-amber-500/40 transition-colors"
+          >
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-4 h-4 text-amber-400" />
-              <span className="text-xs text-muted-foreground">Total XP</span>
+              <Palette className="w-4 h-4 text-amber-400" />
+              <span className="text-xs text-muted-foreground">Style Shop</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{profile?.total_karma || 0}</p>
-          </div>
+            <p className="text-2xl font-bold text-foreground">{profile?.credits || 0}</p>
+          </button>
         </div>
       </section>
 
@@ -355,12 +360,19 @@ const ProfilePage = () => {
         </div>
       </section>
 
-      {/* Battle Card Modal */}
-      <BattleCard
+      {/* Cinematic Battle Card Modal */}
+      <CinematicBattleCard
         userId={profile?.id || "demo"}
         userName={profile?.display_name || "Anonymous Scanner"}
+        userTheme={profile?.equipped_theme || "default"}
         isOpen={showBattleCard}
         onClose={() => setShowBattleCard(false)}
+      />
+
+      {/* Style Shop */}
+      <StyleShop
+        isOpen={showStyleShop}
+        onClose={() => setShowStyleShop(false)}
       />
     </div>
   );

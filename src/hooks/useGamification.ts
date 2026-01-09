@@ -20,6 +20,10 @@ export interface Profile {
   villains_exposed: number;
   total_karma: number;
   level: number;
+  credits: number;
+  equipped_theme: string;
+  daily_quests: Record<string, boolean | string | null>;
+  owned_themes: string[];
 }
 
 export const useGamification = () => {
