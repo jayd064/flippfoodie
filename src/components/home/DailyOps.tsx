@@ -79,58 +79,63 @@ export const DailyOps = () => {
   const completedCount = missions.filter(m => m.completed).length;
 
   return (
-    <section className="px-5 mb-8">
-      <div className="flex items-center justify-between mb-4">
+    <section className="mb-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 px-6">
         <div>
           <h2 className="text-lg font-bold text-foreground tracking-tight">Daily Ops</h2>
-          <p className="text-xs text-muted-foreground font-mono">{completedCount}/3 COMPLETE</p>
+          <p className="text-xs text-muted-foreground font-mono tracking-wide">{completedCount}/3 COMPLETE</p>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
           <Zap className="w-3.5 h-3.5 text-primary" />
-          <span className="text-sm font-bold text-primary font-mono">{profile.credits || 0}</span>
+          <span className="text-sm font-bold text-primary font-mono tracking-wide">{profile.credits || 0}</span>
         </div>
       </div>
 
-      <div className="space-y-3">
+      {/* CRED-Style Horizontal Swipe Deck */}
+      <div className="flex flex-row gap-4 overflow-x-auto snap-x snap-mandatory px-6 scrollbar-none pb-2">
         {missions.map((mission, index) => (
           <motion.div
             key={mission.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.1 }}
             className={cn(
-              "relative overflow-hidden rounded-2xl",
-              "bg-white/5 backdrop-blur-md border",
-              mission.completed 
-                ? "border-primary/30" 
-                : mission.type === "villain" 
-                  ? "border-rose-500/20" 
-                  : mission.type === "hero"
-                    ? "border-emerald-500/20"
-                    : "border-violet-500/20",
-              !mission.completed && mission.glowColor
+              "relative flex-shrink-0 snap-center",
+              "min-w-[85vw] h-32 rounded-2xl overflow-hidden",
+              "bg-[#151515] backdrop-blur-2xl",
+              "border border-white/5",
+              !mission.completed && mission.type === "hero" && "shadow-[0_0_30px_-10px_rgba(16,185,129,0.3)]",
+              !mission.completed && mission.type === "villain" && "shadow-[0_0_30px_-10px_rgba(239,68,68,0.3)]",
+              !mission.completed && mission.type === "comment" && "shadow-[0_0_30px_-10px_rgba(139,92,246,0.3)]"
             )}
           >
-            {/* Gradient background */}
-            <div className={cn(
-              "absolute inset-0 bg-gradient-to-r opacity-50",
-              mission.accentColor
-            )} />
+            {/* Status Pill */}
+            <div className="absolute top-3 right-3">
+              <span className={cn(
+                "px-2 py-1 rounded-full text-[10px] font-bold tracking-widest",
+                mission.completed 
+                  ? "bg-primary/20 text-primary" 
+                  : "bg-white/5 text-muted-foreground"
+              )}>
+                {mission.completed ? "CLAIMED" : "PENDING"}
+              </span>
+            </div>
 
             {/* Content */}
-            <div className="relative p-4 flex items-center gap-4">
+            <div className="h-full p-5 flex items-center gap-5">
               {/* Icon */}
               <div className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center",
+                "w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0",
                 mission.completed 
-                  ? "bg-primary/20" 
-                  : "bg-white/5 border border-white/10"
+                  ? "bg-primary/10" 
+                  : "bg-white/5"
               )}>
                 {mission.completed ? (
-                  <Check className="w-6 h-6 text-primary" />
+                  <Check className="w-7 h-7 text-primary" />
                 ) : (
                   <mission.icon className={cn(
-                    "w-6 h-6",
+                    "w-7 h-7",
                     mission.type === "villain" && "text-rose-400",
                     mission.type === "hero" && "text-emerald-400",
                     mission.type === "comment" && "text-violet-400"
@@ -141,31 +146,26 @@ export const DailyOps = () => {
               {/* Text */}
               <div className="flex-1 min-w-0">
                 <h3 className={cn(
-                  "font-semibold text-sm",
+                  "font-bold text-base mb-1",
                   mission.completed ? "text-muted-foreground line-through" : "text-foreground"
                 )}>
                   {mission.title}
                 </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{mission.description}</p>
-              </div>
-
-              {/* Reward */}
-              <div className={cn(
-                "flex items-center gap-1 px-3 py-1.5 rounded-lg",
-                mission.completed 
-                  ? "bg-primary/10" 
-                  : "bg-white/5 border border-white/10"
-              )}>
-                <Zap className={cn(
-                  "w-3.5 h-3.5",
-                  mission.completed ? "text-primary" : "text-amber-400"
-                )} />
-                <span className={cn(
-                  "text-sm font-bold font-mono",
-                  mission.completed ? "text-primary" : "text-foreground"
-                )}>
-                  +{mission.reward}
-                </span>
+                <p className="text-xs text-muted-foreground">{mission.description}</p>
+                
+                {/* Reward in CRED monospace style */}
+                <div className="mt-2 flex items-center gap-1.5">
+                  <Zap className={cn(
+                    "w-3.5 h-3.5",
+                    mission.completed ? "text-primary/50" : "text-amber-400"
+                  )} />
+                  <span className={cn(
+                    "font-mono text-sm font-bold tracking-widest",
+                    mission.completed ? "text-primary/50" : "text-foreground"
+                  )}>
+                    +{mission.reward}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -178,23 +178,18 @@ export const DailyOps = () => {
                   exit={{ opacity: 0 }}
                   className="absolute inset-0 z-10"
                 >
-                  {/* White flash */}
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: [0, 1, 0] }}
                     transition={{ duration: 0.5 }}
                     className="absolute inset-0 bg-white"
                   />
-                  
-                  {/* Progress bar fill */}
                   <motion.div
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: 1 }}
                     transition={{ duration: 1.2, ease: "easeOut" }}
                     className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-emerald-400 to-primary origin-left"
                   />
-                  
-                  {/* Completed text */}
                   <motion.div
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -211,7 +206,7 @@ export const DailyOps = () => {
 
             {/* Completed overlay */}
             {mission.completed && completingId !== mission.id && (
-              <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" />
+              <div className="absolute inset-0 bg-black/40" />
             )}
           </motion.div>
         ))}
