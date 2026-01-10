@@ -81,7 +81,7 @@ export const DailyOps = () => {
   return (
     <section className="mb-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 px-6">
+      <div className="flex items-center justify-between mb-4 px-5">
         <div>
           <h2 className="text-lg font-bold text-foreground tracking-tight">Daily Ops</h2>
           <p className="text-xs text-muted-foreground font-mono tracking-wide">{completedCount}/3 COMPLETE</p>
@@ -93,7 +93,7 @@ export const DailyOps = () => {
       </div>
 
       {/* CRED-Style Horizontal Swipe Deck */}
-      <div className="flex flex-row gap-4 overflow-x-auto snap-x snap-mandatory px-6 scrollbar-none pb-2">
+      <div className="flex flex-row gap-4 overflow-x-auto snap-x snap-mandatory px-5 scrollbar-none pb-2">
         {missions.map((mission, index) => (
           <motion.div
             key={mission.id}
@@ -101,10 +101,10 @@ export const DailyOps = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.1 }}
             className={cn(
-              "relative flex-shrink-0 snap-center",
-              "min-w-[85vw] h-32 rounded-2xl overflow-hidden",
-              "bg-[#151515] backdrop-blur-2xl",
-              "border border-white/5",
+              "relative flex-shrink-0 snap-start",
+              "min-w-[70vw] h-36 rounded-2xl overflow-hidden",
+              "bg-[#1a1a1a] backdrop-blur-2xl",
+              "border border-white/10",
               !mission.completed && mission.type === "hero" && "shadow-[0_0_30px_-10px_rgba(16,185,129,0.3)]",
               !mission.completed && mission.type === "villain" && "shadow-[0_0_30px_-10px_rgba(239,68,68,0.3)]",
               !mission.completed && mission.type === "comment" && "shadow-[0_0_30px_-10px_rgba(139,92,246,0.3)]"
@@ -123,19 +123,19 @@ export const DailyOps = () => {
             </div>
 
             {/* Content */}
-            <div className="h-full p-5 flex items-center gap-5">
+            <div className="h-full p-4 flex items-center gap-4">
               {/* Icon */}
               <div className={cn(
-                "w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0",
+                "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
                 mission.completed 
                   ? "bg-primary/10" 
                   : "bg-white/5"
               )}>
                 {mission.completed ? (
-                  <Check className="w-7 h-7 text-primary" />
+                  <Check className="w-6 h-6 text-primary" />
                 ) : (
                   <mission.icon className={cn(
-                    "w-7 h-7",
+                    "w-6 h-6",
                     mission.type === "villain" && "text-rose-400",
                     mission.type === "hero" && "text-emerald-400",
                     mission.type === "comment" && "text-violet-400"
@@ -146,25 +146,25 @@ export const DailyOps = () => {
               {/* Text */}
               <div className="flex-1 min-w-0">
                 <h3 className={cn(
-                  "font-bold text-base mb-1",
-                  mission.completed ? "text-muted-foreground line-through" : "text-foreground"
+                  "font-bold text-lg text-white truncate",
+                  mission.completed && "text-muted-foreground line-through"
                 )}>
                   {mission.title}
                 </h3>
-                <p className="text-xs text-muted-foreground">{mission.description}</p>
+                <p className="text-xs text-muted-foreground truncate">{mission.description}</p>
                 
-                {/* Reward in CRED monospace style */}
-                <div className="mt-2 flex items-center gap-1.5">
-                  <Zap className={cn(
-                    "w-3.5 h-3.5",
-                    mission.completed ? "text-primary/50" : "text-amber-400"
-                  )} />
+                {/* Reward - Big CRED style */}
+                <div className="mt-1.5 flex items-center gap-1">
                   <span className={cn(
-                    "font-mono text-sm font-bold tracking-widest",
-                    mission.completed ? "text-primary/50" : "text-foreground"
+                    "font-mono text-2xl font-bold tracking-wide",
+                    mission.completed ? "text-muted-foreground" : "text-emerald-400"
                   )}>
                     +{mission.reward}
                   </span>
+                  <Zap className={cn(
+                    "w-5 h-5",
+                    mission.completed ? "text-muted-foreground" : "text-emerald-400"
+                  )} />
                 </div>
               </div>
             </div>
