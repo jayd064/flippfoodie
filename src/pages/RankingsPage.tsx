@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Trophy, ShoppingBag, Building2, Users, Crown, Share2, ExternalLink, AlertTriangle, TrendingUp } from "lucide-react";
+import { Trophy, ShoppingBag, Building2, Users, Crown, Share2, ExternalLink, AlertTriangle, TrendingUp, Shield, Skull, Sparkles } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getVillains, getHeroes } from "@/data/GlobalStore";
 import { getAffiliateLink, AMAZON_DISCLAIMER } from "@/lib/linkUtils";
 import { useAdmin } from "@/contexts/AdminContext";
+import { CinematicBattleCard } from "@/components/profile/CinematicBattleCard";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 // Get real products from GlobalStore
 const guiltyGems = getVillains().slice(0, 5).map((p, idx) => ({
@@ -40,11 +43,19 @@ const topBrands = [
   { id: 5, name: "PepsiCo", avgScore: 28, products: 67, trend: "-1" },
 ];
 
-const topDetectives = [
-  { id: 1, name: "VeganVigilante", scans: 342, karma: 1250, level: 12, badge: "🏆" },
-  { id: 2, name: "HealthHunter", scans: 289, karma: 980, level: 10, badge: "🥈" },
-  { id: 3, name: "LabelLegend", scans: 256, karma: 870, level: 9, badge: "🥉" },
-  { id: 4, name: "Jayesh_Foodie", scans: 12, karma: 45, level: 5, badge: "⭐" },
+// Updated Detectives with Saints (high score scanners) and Critics (low score scanners)
+const theSaints = [
+  { id: "1", name: "YogaQueen", heroScans: 89, karma: 1450, level: 14, theme: "gold", avatarUrl: "" },
+  { id: "2", name: "CleanEater", heroScans: 76, karma: 1200, level: 12, theme: "default", avatarUrl: "" },
+  { id: "3", name: "HealthHunter", heroScans: 65, karma: 980, level: 10, theme: "cyberpunk", avatarUrl: "" },
+  { id: "4", name: "NutriNinja", heroScans: 54, karma: 780, level: 8, theme: "default", avatarUrl: "" },
+];
+
+const theCritics = [
+  { id: "5", name: "VeganVigilante", villainScans: 142, karma: 1650, level: 15, theme: "noir", avatarUrl: "" },
+  { id: "6", name: "LabelLegend", villainScans: 98, karma: 1100, level: 11, theme: "cyberpunk", avatarUrl: "" },
+  { id: "7", name: "ToxicHunter", villainScans: 87, karma: 920, level: 9, theme: "gold", avatarUrl: "" },
+  { id: "8", name: "Jayesh_Foodie", villainScans: 12, karma: 145, level: 5, theme: "default", avatarUrl: "", isCurrentUser: true },
 ];
 
 const topTribes = [
@@ -59,9 +70,26 @@ const getScoreColor = (score: number) => {
   return "bg-score-bad/20 text-score-bad";
 };
 
+// Get theme ring color
+const getThemeRing = (theme: string) => {
+  switch (theme) {
+    case "gold": return "ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)]";
+    case "cyberpunk": return "ring-2 ring-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)]";
+    case "noir": return "ring-2 ring-zinc-400 shadow-[0_0_10px_rgba(161,161,170,0.3)]";
+    default: return "ring-2 ring-primary/50";
+  }
+};
+
 const RankingsPage = () => {
   const [activeTab, setActiveTab] = useState("products");
+  const [detectiveView, setDetectiveView] = useState<"saints" | "critics">("saints");
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; avatar?: string; theme?: string } | null>(null);
   const { getLinkOverride } = useAdmin();
+
+  // Current user data for sticky footer
+  const currentUser = theCritics.find(u => u.isCurrentUser) || theCritics[theCritics.length - 1];
+  const currentUserRank = theCritics.findIndex(u => u.isCurrentUser) + 1 || theCritics.length;
+  const userAbove = currentUserRank > 1 ? theCritics[currentUserRank - 2] : null;
 
   const handleBuyProduct = (product: { name: string; affiliateUrl: string }) => {
     const adminOverride = getLinkOverride(product.name);
@@ -233,38 +261,133 @@ const RankingsPage = () => {
           </div>
         </TabsContent>
 
-        {/* Detectives Tab */}
-        <TabsContent value="detectives" className="mt-4">
+        {/* Detectives Tab - Premium Split View */}
+        <TabsContent value="detectives" className="mt-4 space-y-4">
+          {/* Saints vs Critics Toggle */}
+          <div className="flex gap-2 p-1 bg-card/50 rounded-xl border border-border/30">
+            <button
+              onClick={() => setDetectiveView("saints")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all",
+                detectiveView === "saints"
+                  ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Shield className="w-4 h-4" />
+              The Saints
+            </button>
+            <button
+              onClick={() => setDetectiveView("critics")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all",
+                detectiveView === "critics"
+                  ? "bg-gradient-to-r from-rose-500/20 to-red-500/20 text-rose-400 border border-rose-500/30"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Skull className="w-4 h-4" />
+              The Critics
+            </button>
+          </div>
+
+          {/* Subtitle */}
+          <p className="text-xs text-muted-foreground text-center">
+            {detectiveView === "saints" 
+              ? "🏆 Top scanners of healthy products" 
+              : "🔍 Top exposers of unhealthy products"}
+          </p>
+
+          {/* User List */}
           <div className="space-y-2">
-            {topDetectives.map((user, idx) => (
-              <div 
-                key={user.id} 
-                className={`flex items-center gap-3 p-4 rounded-xl border ${
-                  user.name === 'Jayesh_Foodie' 
-                    ? 'bg-primary/10 border-primary/30' 
-                    : 'bg-card/50 border-border/30'
-                }`}
+            {(detectiveView === "saints" ? theSaints : theCritics).map((user, idx) => (
+              <motion.div 
+                key={user.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                onClick={() => setSelectedUser({ 
+                  id: user.id, 
+                  name: user.name, 
+                  avatar: user.avatarUrl, 
+                  theme: user.theme 
+                })}
+                className={cn(
+                  "flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]",
+                  'isCurrentUser' in user && user.isCurrentUser
+                    ? "bg-primary/10 border-primary/30" 
+                    : "bg-card/50 border-border/30 hover:border-white/20"
+                )}
               >
-                <span className="text-2xl">{user.badge}</span>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center text-lg">
-                  🔍
+                {/* Rank Badge */}
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
+                  idx === 0 && "bg-amber-500/20 text-amber-400",
+                  idx === 1 && "bg-zinc-400/20 text-zinc-300",
+                  idx === 2 && "bg-orange-600/20 text-orange-400",
+                  idx > 2 && "bg-white/5 text-muted-foreground"
+                )}>
+                  #{idx + 1}
                 </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground flex items-center gap-2">
+
+                {/* Avatar with Premium Ring */}
+                <div className={cn(
+                  "w-11 h-11 rounded-full flex items-center justify-center overflow-hidden",
+                  getThemeRing(user.theme)
+                )}>
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className={cn(
+                      "w-full h-full flex items-center justify-center text-lg font-bold",
+                      detectiveView === "saints" 
+                        ? "bg-gradient-to-br from-emerald-600 to-teal-600 text-white"
+                        : "bg-gradient-to-br from-rose-600 to-red-600 text-white"
+                    )}>
+                      {user.name[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+
+                {/* User Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground flex items-center gap-2 truncate">
                     {user.name}
-                    {user.name === 'Jayesh_Foodie' && <span className="text-xs text-primary">(You)</span>}
+                    {'isCurrentUser' in user && user.isCurrentUser && (
+                      <span className="text-xs text-primary">(You)</span>
+                    )}
+                    {user.theme !== "default" && (
+                      <Sparkles className="w-3 h-3 text-amber-400" />
+                    )}
                   </p>
-                  <p className="text-xs text-muted-foreground">Lvl {user.level} • {user.scans} scans • {user.karma} karma</p>
+                  <p className="text-xs text-muted-foreground">
+                    Lvl {user.level} • {detectiveView === "saints" 
+                      ? `${(user as typeof theSaints[0]).heroScans} heroes` 
+                      : `${(user as typeof theCritics[0]).villainScans} villains`
+                    } • {user.karma} karma
+                  </p>
                 </div>
-                <span className="text-lg font-bold text-muted-foreground">#{idx + 1}</span>
-              </div>
+
+                {/* Score Badge */}
+                <div className={cn(
+                  "px-2 py-1 rounded-lg text-xs font-mono font-bold",
+                  detectiveView === "saints" 
+                    ? "bg-emerald-500/20 text-emerald-400"
+                    : "bg-rose-500/20 text-rose-400"
+                )}>
+                  {detectiveView === "saints" 
+                    ? (user as typeof theSaints[0]).heroScans
+                    : (user as typeof theCritics[0]).villainScans
+                  }
+                </div>
+              </motion.div>
             ))}
           </div>
 
           {/* Share My Rank Button */}
           <Button
             onClick={handleShareRank}
-            className="w-full mt-6 bg-gradient-to-r from-primary to-emerald-600 hover:opacity-90 h-12 text-base font-semibold"
+            className="w-full mt-4 bg-gradient-to-r from-primary to-emerald-600 hover:opacity-90 h-12 text-base font-semibold"
           >
             <Share2 className="w-5 h-5 mr-2" />
             Share My Rank
@@ -294,6 +417,60 @@ const RankingsPage = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Sticky Rank Footer - Only show on Detectives tab */}
+      {activeTab === "detectives" && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="fixed bottom-20 left-0 right-0 z-50 px-4"
+        >
+          <div className="bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              {/* User Avatar */}
+              <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden",
+                getThemeRing(currentUser.theme || "default")
+              )}>
+                <div className="w-full h-full bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center text-lg font-bold text-white">
+                  {currentUser.name[0]?.toUpperCase()}
+                </div>
+              </div>
+
+              {/* Rank Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-black text-foreground font-mono">#{currentUserRank}</span>
+                  <span className="text-sm text-muted-foreground truncate">{currentUser.name}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {userAbove 
+                    ? `Scan ${Math.max(1, userAbove.villainScans - currentUser.villainScans + 1)} more villains to overtake ${userAbove.name}`
+                    : "You're climbing the ranks! 🚀"
+                  }
+                </p>
+              </div>
+
+              {/* Level Badge */}
+              <div className="px-3 py-1.5 rounded-lg bg-primary/20 border border-primary/30">
+                <span className="text-sm font-bold text-primary font-mono">Lvl {currentUser.level}</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Cinematic Battle Card Modal */}
+      {selectedUser && (
+        <CinematicBattleCard
+          userId={selectedUser.id}
+          userName={selectedUser.name}
+          userAvatar={selectedUser.avatar}
+          userTheme={selectedUser.theme}
+          isOpen={!!selectedUser}
+          onClose={() => setSelectedUser(null)}
+        />
+      )}
     </div>
   );
 };
