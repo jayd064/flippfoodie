@@ -93,7 +93,7 @@ export const DailyOps = () => {
       </div>
 
       {/* CRED-Style Horizontal Swipe Deck */}
-      <div className="flex flex-row gap-4 overflow-x-auto snap-x snap-mandatory px-5 scrollbar-none pb-2">
+      <div className="flex flex-row gap-3 overflow-x-auto snap-x snap-mandatory px-5 scrollbar-none pb-2">
         {missions.map((mission, index) => (
           <motion.div
             key={mission.id}
@@ -102,40 +102,40 @@ export const DailyOps = () => {
             transition={{ delay: index * 0.1 }}
             className={cn(
               "relative flex-shrink-0 snap-start",
-              "min-w-[70vw] h-36 rounded-2xl overflow-hidden",
-              "bg-[#1a1a1a] backdrop-blur-2xl",
+              "w-[260px] h-28 rounded-xl overflow-hidden",
+              "bg-[#0a0a0a]",
               "border border-white/10",
-              !mission.completed && mission.type === "hero" && "shadow-[0_0_30px_-10px_rgba(16,185,129,0.3)]",
-              !mission.completed && mission.type === "villain" && "shadow-[0_0_30px_-10px_rgba(239,68,68,0.3)]",
-              !mission.completed && mission.type === "comment" && "shadow-[0_0_30px_-10px_rgba(139,92,246,0.3)]"
+              !mission.completed && mission.type === "hero" && "shadow-[0_0_20px_-5px_rgba(16,185,129,0.25)]",
+              !mission.completed && mission.type === "villain" && "shadow-[0_0_20px_-5px_rgba(239,68,68,0.25)]",
+              !mission.completed && mission.type === "comment" && "shadow-[0_0_20px_-5px_rgba(139,92,246,0.25)]"
             )}
           >
             {/* Status Pill */}
-            <div className="absolute top-3 right-3">
+            <div className="absolute top-2.5 right-2.5">
               <span className={cn(
-                "px-2 py-1 rounded-full text-[10px] font-bold tracking-widest",
+                "px-1.5 py-0.5 rounded text-[10px] tracking-widest uppercase",
                 mission.completed 
-                  ? "bg-primary/20 text-primary" 
-                  : "bg-white/5 text-muted-foreground"
+                  ? "bg-primary/20 text-primary font-bold" 
+                  : "text-zinc-500"
               )}>
                 {mission.completed ? "CLAIMED" : "PENDING"}
               </span>
             </div>
 
             {/* Content */}
-            <div className="h-full p-4 flex items-center gap-4">
+            <div className="h-full p-4 flex items-center gap-3">
               {/* Icon */}
               <div className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
+                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
                 mission.completed 
                   ? "bg-primary/10" 
                   : "bg-white/5"
               )}>
                 {mission.completed ? (
-                  <Check className="w-6 h-6 text-primary" />
+                  <Check className="w-5 h-5 text-primary" />
                 ) : (
                   <mission.icon className={cn(
-                    "w-6 h-6",
+                    "w-5 h-5",
                     mission.type === "villain" && "text-rose-400",
                     mission.type === "hero" && "text-emerald-400",
                     mission.type === "comment" && "text-violet-400"
@@ -146,24 +146,23 @@ export const DailyOps = () => {
               {/* Text */}
               <div className="flex-1 min-w-0">
                 <h3 className={cn(
-                  "font-bold text-lg text-white truncate",
-                  mission.completed && "text-muted-foreground line-through"
+                  "text-sm font-medium text-zinc-300 truncate",
+                  mission.completed && "text-zinc-600 line-through"
                 )}>
                   {mission.title}
                 </h3>
-                <p className="text-xs text-muted-foreground truncate">{mission.description}</p>
                 
-                {/* Reward - Big CRED style */}
-                <div className="mt-1.5 flex items-center gap-1">
+                {/* Reward - CRED monospace style */}
+                <div className="mt-1 flex items-center gap-1">
                   <span className={cn(
-                    "font-mono text-2xl font-bold tracking-wide",
-                    mission.completed ? "text-muted-foreground" : "text-emerald-400"
+                    "font-mono text-xl font-bold",
+                    mission.completed ? "text-zinc-600" : "text-emerald-400"
                   )}>
                     +{mission.reward}
                   </span>
                   <Zap className={cn(
-                    "w-5 h-5",
-                    mission.completed ? "text-muted-foreground" : "text-emerald-400"
+                    "w-4 h-4",
+                    mission.completed ? "text-zinc-600" : "text-emerald-400"
                   )} />
                 </div>
               </div>
