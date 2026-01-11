@@ -1,44 +1,28 @@
 import { useState, useMemo } from "react";
-import SubsHeader from "@/components/community/SubsHeader";
+import BrandSubsHeader from "@/components/community/BrandSubsHeader";
+import TrendingTribes from "@/components/community/TrendingTribes";
+import BrandDirectory from "@/components/community/BrandDirectory";
 import FeedCard from "@/components/community/FeedCard";
 import CommentDrawer from "@/components/community/CommentDrawer";
-import MyStashGrid from "@/components/community/MyStashGrid";
 import CreatePostFAB from "@/components/community/CreatePostFAB";
 import NewPostDrawer from "@/components/community/NewPostDrawer";
 import { usePosts } from "@/contexts/PostContext";
 
 const CommunityFeedPage = () => {
-  const [activeTab, setActiveTab] = useState<"discover" | "stash">("discover");
-  const [activeTribe, setActiveTribe] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"brands" | "feed">("brands");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [showNewPostDrawer, setShowNewPostDrawer] = useState(false);
+  const [joinedBrands, setJoinedBrands] = useState<string[]>(["amul", "nestle"]);
   
-  const { posts, toggleLike, addComment, voteComment, searchPosts, filterByTribe } = usePosts();
-  
-  const [brands, setBrands] = useState([
-    { id: "1", name: "Amul", logo: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop", followerCount: 12400, isFollowing: true },
-    { id: "2", name: "Nestle", logo: "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=200&h=200&fit=crop", followerCount: 8900, isFollowing: true },
-    { id: "3", name: "Parle", logo: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=200&h=200&fit=crop", followerCount: 6700, isFollowing: true },
-    { id: "4", name: "Britannia", logo: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=200&h=200&fit=crop", followerCount: 5400, isFollowing: true },
-    { id: "5", name: "Haldiram's", logo: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=200&h=200&fit=crop", followerCount: 4200, isFollowing: true },
-    { id: "6", name: "MTR", logo: "https://images.unsplash.com/photo-1596797038530-2c107229654b?w=200&h=200&fit=crop", followerCount: 3100, isFollowing: true },
-  ]);
+  const { posts, toggleLike, addComment, voteComment, searchPosts } = usePosts();
 
-  // Filter posts based on search and tribe
+  // Filter posts based on search
   const filteredPosts = useMemo(() => {
-    let result = posts;
-    
-    if (searchQuery.trim()) {
-      result = searchPosts(searchQuery);
-    }
-    
-    if (activeTribe) {
-      result = result.filter((post) => post.tribes?.includes(activeTribe));
-    }
-    
-    return result;
-  }, [posts, searchQuery, activeTribe, searchPosts]);
+    if (!searchQuery.trim()) return posts;
+    return searchPosts(searchQuery);
+  }, [posts, searchQuery, searchPosts]);
 
   const handleLike = (id: string) => {
     toggleLike(id);
@@ -68,51 +52,40 @@ const CommunityFeedPage = () => {
     }
   };
 
-  const handleToggleFollow = (id: string) => {
-    setBrands((prev) =>
-      prev.map((brand) =>
-        brand.id === id ? { ...brand, isFollowing: !brand.isFollowing } : brand
-      )
+  const handleJoinBrand = (brandId: string) => {
+    setJoinedBrands((prev) =>
+      prev.includes(brandId)
+        ? prev.filter((id) => id !== brandId)
+        : [...prev, brandId]
     );
+  };
+
+  const handleTribeClick = (tribeId: string) => {
+    console.log("Navigate to tribe:", tribeId);
+    // Could navigate to a tribe detail page or filter feed
   };
 
   const selectedPost = posts.find((p) => p.id === selectedPostId);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] pb-32">
-      <SubsHeader
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        activeTribe={activeTribe}
-        onTribeChange={setActiveTribe}
+      <BrandSubsHeader
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
       />
 
-      {activeTab === "discover" ? (
-        <div className="px-4 pt-4">
-          {filteredPosts.length > 0 ? (
-            filteredPosts.map((post) => (
-              <FeedCard
-                key={post.id}
-                post={{
-                  ...post,
-                  comments: post.comments.length,
-                }}
-                onLike={handleLike}
-                onComment={handleComment}
-                onShare={handleShare}
-              />
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-zinc-500">No posts found</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <MyStashGrid brands={brands} onToggleFollow={handleToggleFollow} />
-      )}
+      {/* Trending Tribes Carousel */}
+      <TrendingTribes onTribeClick={handleTribeClick} />
+
+      {/* Brand Directory Grid */}
+      <BrandDirectory
+        searchQuery={searchQuery}
+        activeCategory={activeCategory}
+        onJoin={handleJoinBrand}
+        joinedBrands={joinedBrands}
+      />
 
       <CreatePostFAB onClick={() => setShowNewPostDrawer(true)} />
 
