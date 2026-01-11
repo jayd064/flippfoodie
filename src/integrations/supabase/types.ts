@@ -123,13 +123,16 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_type: string
           avatar_url: string | null
+          brand_name: string | null
           created_at: string | null
           credits: number | null
           daily_quests: Json | null
           display_name: string | null
           equipped_theme: string | null
           id: string
+          is_verified: boolean
           level: number | null
           owned_themes: string[] | null
           scans_count: number | null
@@ -139,13 +142,16 @@ export type Database = {
           villains_exposed: number | null
         }
         Insert: {
+          account_type?: string
           avatar_url?: string | null
+          brand_name?: string | null
           created_at?: string | null
           credits?: number | null
           daily_quests?: Json | null
           display_name?: string | null
           equipped_theme?: string | null
           id?: string
+          is_verified?: boolean
           level?: number | null
           owned_themes?: string[] | null
           scans_count?: number | null
@@ -155,13 +161,16 @@ export type Database = {
           villains_exposed?: number | null
         }
         Update: {
+          account_type?: string
           avatar_url?: string | null
+          brand_name?: string | null
           created_at?: string | null
           credits?: number | null
           daily_quests?: Json | null
           display_name?: string | null
           equipped_theme?: string | null
           id?: string
+          is_verified?: boolean
           level?: number | null
           owned_themes?: string[] | null
           scans_count?: number | null

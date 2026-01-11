@@ -30,6 +30,10 @@ export interface Comment {
   userVote: "up" | "down" | null;
   timeAgo: string;
   replies?: Comment[];
+  // Verification fields
+  isVerified?: boolean;
+  accountType?: "user" | "brand_official" | "admin";
+  brandName?: string;
 }
 
 export interface Tribe {
