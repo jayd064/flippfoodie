@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { TikTokHeader } from "@/components/product/TikTokHeader";
 import { VillainsSection } from "@/components/product/VillainsSection";
+import { DeepDiveSection } from "@/components/product/DeepDiveSection";
 import { HeroSwapCard } from "@/components/product/HeroSwapCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -522,6 +523,15 @@ const ProductPage = () => {
               isLoading={isCalculatingDetails}
             />
           </div>
+        )}
+
+        {/* Deep Dive Section - Visual Analysis, Time Machine, Red Flags */}
+        {hasScore && product?.ingredients_text && (
+          <DeepDiveSection
+            ingredientsText={product.ingredients_text}
+            healthScore={revealedScore}
+            productName={productName}
+          />
         )}
 
         {/* Hero Swap Card for Villains (Score < 50) */}
