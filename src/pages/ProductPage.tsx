@@ -304,11 +304,32 @@ const ProductPage = () => {
   if (barcode && !product && !isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center px-5 bg-background">
-        <div className="text-center space-y-4">
-          <p className="text-muted-foreground">Product not found</p>
-          <Link to="/" className="text-primary hover:underline">
-            Go back home
-          </Link>
+        <div className="text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+            <Skull className="w-10 h-10 text-destructive" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-xl font-bold text-foreground">Product Not Found</p>
+            <p className="text-muted-foreground text-sm">
+              Could not find product with ID: <code className="bg-muted px-2 py-1 rounded text-xs font-mono">{barcode}</code>
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Link 
+              to="/" 
+              className="inline-flex items-center justify-center gap-2 w-full py-3 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 transition-opacity"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Go back home
+            </Link>
+            <Link 
+              to="/scanner" 
+              className="inline-flex items-center justify-center gap-2 w-full py-3 bg-muted text-foreground font-semibold rounded-xl hover:bg-muted/80 transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              Scan a product
+            </Link>
+          </div>
         </div>
       </div>
     );
