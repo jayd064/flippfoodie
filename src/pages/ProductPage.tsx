@@ -14,7 +14,7 @@ import {
   Leaf,
   Edit3,
 } from "lucide-react";
-import { TikTokHeader } from "@/components/product/TikTokHeader";
+import { EditorialHeader } from "@/components/product/EditorialHeader";
 import { VillainsSection } from "@/components/product/VillainsSection";
 import { DeepDiveSection } from "@/components/product/DeepDiveSection";
 import { HeroSwapCard } from "@/components/product/HeroSwapCard";
@@ -28,45 +28,20 @@ import { useAdmin } from "@/contexts/AdminContext";
 import { usePosts } from "@/contexts/PostContext";
 import { cn } from "@/lib/utils";
 
-const guiltyMemes = [
-  "https://media.giphy.com/media/3o7TKnO6Wve6502iJ2/giphy.mp4",
-  "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.mp4",
-  "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.mp4",
-  "https://media.giphy.com/media/3ohzdYJK1lneMN8Ymc/giphy.mp4",
-  "https://media.giphy.com/media/JTzPN5kkobFv7X0zPJ/giphy.mp4",
-];
-
-const confusedMemes = [
-  "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.mp4",
-  "https://media.giphy.com/media/WRQBXSCnEFJIuxktnw/giphy.mp4",
-  "https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.mp4",
-  "https://media.giphy.com/media/3o7527pa7qs9kCG78A/giphy.mp4",
-  "https://media.giphy.com/media/a5viI92PAF89q/giphy.mp4",
-];
-
-const victoryMemes = [
-  "https://media.giphy.com/media/l0MYJnJQ4EiYLxvQ4/giphy.mp4",
-  "https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.mp4",
-  "https://media.giphy.com/media/3oz8xRF0v9WMAUVLNK/giphy.mp4",
-  "https://media.giphy.com/media/xUPGGDNsLvqsBOhuU0/giphy.mp4",
-  "https://media.giphy.com/media/l4pTfx2qLszoacZRS/giphy.mp4",
-];
-
-const getRandomVideo = (videos: string[]) => {
-  return videos[Math.floor(Math.random() * videos.length)];
-};
-
-const getMemeForScore = (score: number | null) => {
-  if (score === null || score === 0) return null;
-  if (score < 40) return getRandomVideo(guiltyMemes);
-  if (score < 70) return getRandomVideo(confusedMemes);
-  return getRandomVideo(victoryMemes);
-};
-
 // Theme configuration based on score
 const getTheme = (score: number | null) => {
   if (score === null) return "neutral";
-  return score < 50 ? "villain" : "hero";
+  if (score < 40) return "villain";
+  if (score > 70) return "hero";
+  return "neutral";
+};
+
+// Editorial background gradient based on score
+const getEditorialBackground = (score: number | null): string => {
+  if (score === null) return "bg-gradient-to-b from-[#172554] to-[#0a0a0a]"; // Neutral: Deep Royal Blue
+  if (score < 40) return "bg-gradient-to-b from-[#450a0a] to-[#0a0a0a]"; // Villain: Deep Red Velvet
+  if (score > 70) return "bg-gradient-to-b from-[#064e3b] to-[#0a0a0a]"; // Hero: Deep Forest Green
+  return "bg-gradient-to-b from-[#172554] to-[#0a0a0a]"; // Neutral: Deep Royal Blue
 };
 
 const ProductPage = () => {
@@ -104,13 +79,10 @@ const ProductPage = () => {
     enabled: !!barcode,
   });
 
-  const memeVideo = useMemo(() => {
-    return getMemeForScore(revealedScore);
-  }, [revealedScore]);
-
   const theme = getTheme(revealedScore);
   const isVillain = theme === "villain";
   const isHero = theme === "hero";
+  const isNeutral = theme === "neutral";
 
   // Get sample community discussions related to this product
   const relatedDiscussions = useMemo(() => {
@@ -339,44 +311,42 @@ const ProductPage = () => {
   const productName = product?.name || "Unknown Product";
   const productBrand = product?.brand || "Unknown Brand";
 
-  // Theme-based styles
-  const bgClass = isVillain 
-    ? "bg-[#0a0a0a]" 
-    : isHero 
-    ? "bg-gradient-to-b from-emerald-50 via-white to-mint-50" 
-    : "bg-background";
+  // Theme-based styles - Editorial Aesthetic (Deep Matte Colors)
+  const bgClass = getEditorialBackground(revealedScore);
   
+  // Card styles - darker for editorial look
   const cardClass = isVillain
-    ? "bg-[#151515] border-red-500/20"
+    ? "bg-[#151515] border-red-900/30"
     : isHero
-    ? "bg-white/80 backdrop-blur-sm border-emerald-200"
-    : "bg-card border-border/50";
+    ? "bg-[#0d2818] border-emerald-900/30"
+    : "bg-[#0f172a] border-blue-900/30";
 
-  const textClass = isVillain
-    ? "text-white"
-    : isHero
-    ? "text-gray-900"
-    : "text-foreground";
+  // Text always light on dark editorial backgrounds
+  const textClass = "text-white";
+  const mutedTextClass = "text-zinc-400";
 
-  const mutedTextClass = isVillain
-    ? "text-zinc-400"
-    : isHero
-    ? "text-gray-600"
-    : "text-muted-foreground";
-
-  // Screen glow effect based on score
+  // Subtle glow effect based on score
   const glowClass = isVillain 
-    ? "shadow-[0_0_100px_-20px_rgba(239,68,68,0.4)]" 
+    ? "shadow-[0_0_80px_-30px_rgba(127,29,29,0.5)]" 
     : isHero 
-    ? "shadow-[0_0_100px_-20px_rgba(16,185,129,0.4)]" 
-    : "";
+    ? "shadow-[0_0_80px_-30px_rgba(6,78,59,0.5)]" 
+    : "shadow-[0_0_80px_-30px_rgba(23,37,84,0.5)]";
 
   return (
-    <div className={cn("min-h-screen pb-8 transition-colors duration-500", bgClass, glowClass)}>
+    <div className={cn("min-h-screen pb-8 transition-colors duration-500 relative", bgClass, glowClass)}>
+      {/* Noise Texture Overlay - Paper/Magazine feel */}
+      <div 
+        className="fixed inset-0 opacity-[0.05] pointer-events-none z-0"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'repeat',
+        }}
+      />
+
       {showSpinner && (
         <div className={cn(
           "fixed top-0 left-0 right-0 z-50 py-3 px-4",
-          isVillain ? "bg-red-600 text-white" : "bg-primary text-primary-foreground"
+          isVillain ? "bg-red-800 text-white" : isHero ? "bg-emerald-800 text-white" : "bg-blue-800 text-white"
         )}>
           <div className="flex items-center justify-center gap-2 animate-pulse">
             <Sparkles className="w-5 h-5" />
@@ -386,9 +356,8 @@ const ProductPage = () => {
       )}
 
       <div ref={cardRef} className={`relative ${showSpinner ? "mt-12" : ""}`}>
-        <TikTokHeader
+        <EditorialHeader
           score={revealedScore}
-          videoUrl={memeVideo}
           productImageUrl={imageUrl}
           productName={productName}
           isRevealed={hasScore}
@@ -398,16 +367,9 @@ const ProductPage = () => {
         <div id="back-button" className="absolute top-0 left-0 p-4 pt-12 z-20 transition-opacity">
           <Link
             to="/"
-            className={cn(
-              "p-2.5 rounded-full backdrop-blur-sm border shadow-soft hover:opacity-80 transition-all",
-              isVillain 
-                ? "bg-black/50 border-red-500/30" 
-                : isHero 
-                ? "bg-white/80 border-emerald-200" 
-                : "bg-card/90 border-border/50"
-            )}
+            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-black/60 transition-all"
           >
-            <ArrowLeft className={cn("w-5 h-5", isVillain ? "text-white" : isHero ? "text-gray-900" : "text-foreground")} />
+            <ArrowLeft className="w-5 h-5 text-white" />
           </Link>
         </div>
         
@@ -415,19 +377,12 @@ const ProductPage = () => {
           <button 
             onClick={handleShare}
             disabled={isSharing}
-            className={cn(
-              "p-2.5 rounded-full backdrop-blur-sm border shadow-soft hover:opacity-80 transition-all disabled:opacity-50",
-              isVillain 
-                ? "bg-black/50 border-red-500/30" 
-                : isHero 
-                ? "bg-white/80 border-emerald-200" 
-                : "bg-card/90 border-border/50"
-            )}
+            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-black/60 transition-all disabled:opacity-50"
           >
             {isSharing ? (
-              <Loader2 className={cn("w-5 h-5 animate-spin", textClass)} />
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
             ) : (
-              <Share2 className={cn("w-5 h-5", textClass)} />
+              <Share2 className="w-5 h-5 text-white" />
             )}
           </button>
         </div>
@@ -453,25 +408,29 @@ const ProductPage = () => {
         {/* Hero vs Villain Story Card */}
         {hasScore && (
           <div className={cn(
-            "mt-5 rounded-2xl p-5 border backdrop-blur-sm animate-fade-up",
+            "mt-5 rounded-2xl p-5 border animate-fade-up",
             isVillain 
-              ? "bg-gradient-to-br from-red-950/50 to-black border-red-500/30" 
-              : "bg-gradient-to-br from-emerald-50 to-white border-emerald-200"
+              ? "bg-red-950/40 border-red-900/40" 
+              : isHero
+              ? "bg-emerald-950/40 border-emerald-900/40"
+              : "bg-blue-950/40 border-blue-900/40"
           )}>
             <div className="flex items-center gap-2 mb-3">
               {isVillain ? (
                 <Skull className="w-5 h-5 text-red-400" />
               ) : (
-                <Leaf className="w-5 h-5 text-emerald-600" />
+                <Leaf className="w-5 h-5 text-emerald-400" />
               )}
-              <h3 className={cn("font-bold", isVillain ? "text-red-400" : "text-emerald-700")}>
-                {isVillain ? "Villain Detected 👿" : "Hero Product 🌿"}
+              <h3 className={cn("font-bold", isVillain ? "text-red-400" : "text-emerald-400")}>
+                {isVillain ? "Villain Detected 👿" : isHero ? "Hero Product 🌿" : "Mixed Bag 🤔"}
               </h3>
             </div>
-            <p className={cn("text-sm leading-relaxed", isVillain ? "text-zinc-300" : "text-gray-700")}>
+            <p className="text-sm leading-relaxed text-zinc-300">
               {isVillain 
                 ? `This product scored ${revealedScore}/100. It may contain ingredients that aren't great for your health. Consider checking the alternatives below for a healthier swap!`
-                : `Great choice! This product scored ${revealedScore}/100. It's made with cleaner ingredients and is a better option for your health.`
+                : isHero
+                ? `Great choice! This product scored ${revealedScore}/100. It's made with cleaner ingredients and is a better option for your health.`
+                : `This product scored ${revealedScore}/100. It's neither great nor terrible - proceed with moderation.`
               }
             </p>
           </div>
@@ -594,24 +553,17 @@ const ProductPage = () => {
                   <button
                     key={discussion.id}
                     onClick={() => navigate("/community")}
-                    className={cn(
-                      "w-full text-left p-3 rounded-xl border transition-all hover:scale-[1.02]",
-                      isVillain 
-                        ? "bg-black/30 border-white/10 hover:border-red-500/30" 
-                        : isHero 
-                        ? "bg-emerald-50/50 border-emerald-100 hover:border-emerald-300" 
-                        : "bg-muted/30 border-border/30 hover:border-primary/30"
-                    )}
+                    className="w-full text-left p-3 rounded-xl border border-white/10 bg-white/5 transition-all hover:scale-[1.02] hover:bg-white/10"
                   >
-                    <p className={cn("text-sm font-medium line-clamp-1", textClass)}>
+                    <p className="text-sm font-medium line-clamp-1 text-white">
                       {discussion.title}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className={cn("text-xs", mutedTextClass)}>
+                      <span className="text-xs text-zinc-400">
                         t/{discussion.community.replace("r/", "")}
                       </span>
-                      <span className={mutedTextClass}>•</span>
-                      <span className={cn("text-xs", mutedTextClass)}>
+                      <span className="text-zinc-500">•</span>
+                      <span className="text-xs text-zinc-400">
                         {discussion.comments.length} replies
                       </span>
                     </div>
@@ -619,7 +571,7 @@ const ProductPage = () => {
                 ))}
               </div>
             ) : (
-              <p className={cn("text-sm text-center py-4", mutedTextClass)}>
+              <p className="text-sm text-center py-4 text-zinc-400">
                 No discussions yet. Be the first to share your thoughts!
               </p>
             )}
@@ -628,10 +580,12 @@ const ProductPage = () => {
             <button
               onClick={() => navigate("/community")}
               className={cn(
-                "w-full mt-4 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all",
+                "w-full mt-4 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all border",
                 isVillain 
-                  ? "bg-red-600 text-white hover:bg-red-500" 
-                  : "bg-emerald-600 text-white hover:bg-emerald-500"
+                  ? "bg-red-900/50 border-red-800 text-red-300 hover:bg-red-900/70" 
+                  : isHero
+                  ? "bg-emerald-900/50 border-emerald-800 text-emerald-300 hover:bg-emerald-900/70"
+                  : "bg-blue-900/50 border-blue-800 text-blue-300 hover:bg-blue-900/70"
               )}
             >
               <Edit3 className="w-4 h-4" />
@@ -669,20 +623,24 @@ const ProductPage = () => {
                 setTimeout(() => window.open(affiliateLink, "_blank"), 1000);
               }}
               className={cn(
-                "w-full py-4 font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-2",
+                "w-full py-4 font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-2 border",
                 isVillain 
-                  ? "bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/25" 
-                  : "bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/25"
+                  ? "bg-red-700 border-red-600 text-white hover:bg-red-600 shadow-lg shadow-red-900/40" 
+                  : isHero
+                  ? "bg-emerald-700 border-emerald-600 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-900/40"
+                  : "bg-blue-700 border-blue-600 text-white hover:bg-blue-600 shadow-lg shadow-blue-900/40"
               )}
             >
               {isVillain ? (
                 <>😈 Indulge (At Your Own Risk)</>
-              ) : (
+              ) : isHero ? (
                 <>🌿 Grab the Goodness</>
+              ) : (
+                <>🛒 Buy on Amazon</>
               )}
               <ExternalLink className="w-5 h-5" />
             </button>
-            <p className={cn("text-[10px] text-center opacity-70", mutedTextClass)}>
+            <p className="text-[10px] text-center text-zinc-500">
               {AMAZON_DISCLAIMER}
             </p>
           </div>
